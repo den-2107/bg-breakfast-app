@@ -23,8 +23,9 @@ export default function BreakfastTable({
     (sum, room) => sum + orders[room].length,
     0
   );
-console.log("orders", orders);
-console.log("selectedDate", selectedDate);
+
+  console.log("orders", orders);
+  console.log("selectedDate", selectedDate);
 
   return (
     <div>
@@ -33,7 +34,8 @@ console.log("selectedDate", selectedDate);
           marginBottom: "12px",
           fontWeight: "bold",
           fontSize: "18px",
-          paddingLeft: "0px"
+          paddingLeft: "0px",
+          textAlign: "left" // 👈 выравнивание по левому краю
         }}
       >
         Завтраки: {roomsWithOrders.length} номеров / {totalOrders} заказов
@@ -42,9 +44,36 @@ console.log("selectedDate", selectedDate);
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            <th style={{ borderBottom: "2px solid #ccc", padding: "8px" }}>Комната</th>
-            <th style={{ borderBottom: "2px solid #ccc", padding: "8px" }}>Время</th>
-            <th style={{ borderBottom: "2px solid #ccc", padding: "8px" }}>Завтрак</th>
+            <th
+              style={{
+                borderBottom: "2px solid #ccc",
+                padding: "8px",
+                fontSize: "16px",
+                textAlign: "left" // 👈 левый край
+              }}
+            >
+              Комната
+            </th>
+            <th
+              style={{
+                borderBottom: "2px solid #ccc",
+                padding: "8px",
+                fontSize: "16px",
+                textAlign: "left" // 👈 левый край
+              }}
+            >
+              Время
+            </th>
+            <th
+              style={{
+                borderBottom: "2px solid #ccc",
+                padding: "8px",
+                fontSize: "16px",
+                textAlign: "left" // 👈 левый край
+              }}
+            >
+              Завтрак
+            </th>
           </tr>
         </thead>
         <tbody>

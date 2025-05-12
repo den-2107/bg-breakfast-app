@@ -55,16 +55,24 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
             <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "10px" }}>
               {slot}
             </h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "12px",
+                alignItems: "flex-start"
+              }}
+            >
               {sortedRooms.map(([room, roomOrders]) => (
-                <KitchenCard
-                  key={room}
-                  room={room}
-                  orders={roomOrders}
-                  isPriority={roomOrders.some((o) => o.urgent)}
-                  selectedDate={selectedDate}                    // 👈 обязательно
-                  setOrdersByDate={setOrdersByDate}
-                />
+                <div key={room} style={{ width: "300px" }}>
+                  <KitchenCard
+                    room={room}
+                    orders={roomOrders}
+                    isPriority={roomOrders.some((o) => o.urgent)}
+                    selectedDate={selectedDate}
+                    setOrdersByDate={setOrdersByDate}
+                  />
+                </div>
               ))}
             </div>
           </div>

@@ -99,31 +99,47 @@ export default function RoomRow({
     <>
       <tr>
         <td style={{ borderBottom: "1px solid #ccc", padding: "8px" }}>
-          <strong>{room}</strong>
+          <strong style={{ fontSize: "18px" }}>{room}</strong>
         </td>
-        <td style={{ borderBottom: "1px solid #ccc", padding: "8px" }}>
+
+        <td style={{ borderBottom: "1px solid #ccc", padding: "8px", whiteSpace: "nowrap" }}>
           <select value={currentTime} onChange={handleTimeChange} disabled={!hasOrders}>
             {TIME_SLOTS.map((slot) => (
               <option key={slot} value={slot}>{slot}</option>
             ))}
           </select>
         </td>
+
         <td style={{ borderBottom: "1px solid #ccc", padding: "8px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "8px",
+            alignItems: "flex-start"
+          }}>
             {(orders || []).map((o, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
-                <OrderCard order={o} index={i} />
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 4 }}>
-                  <button onClick={() => handleEditOrder(i)} title="Редактировать заказ" style={{ cursor: "pointer" }}>✏️</button>
-                  <button onClick={() => setConfirmIndex(i)} title="Удалить заказ" style={{ cursor: "pointer" }}>🗑️</button>
-                </div>
-                {confirmIndex === i && (
-                  <div style={{ marginLeft: 10, background: "#fee", padding: 5, borderRadius: 4 }}>
-                    <div>Удалить заказ?</div>
-                    <button onClick={() => confirmDeleteOrder(i)} style={{ marginRight: 5 }}>Удалить</button>
-                    <button onClick={() => setConfirmIndex(null)}>Отмена</button>
+              <div key={i} style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                position: "relative"
+              }}>
+                <div style={{
+                  display: "flex",
+                  gap: "6px",
+                  alignItems: "flex-start"
+                }}>
+                  <OrderCard order={o} index={i} />
+                  <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                    paddingTop: 4
+                  }}>
+                    <button onClick={() => handleEditOrder(i)} title="Редактировать заказ" style={{ cursor: "pointer" }}>✏️</button>
+                    <button onClick={() => setConfirmIndex(i)} title="Удалить заказ" style={{ cursor: "pointer" }}>🗑️</button>
                   </div>
-                )}
+                </div>
               </div>
             ))}
             <button
@@ -153,6 +169,34 @@ export default function RoomRow({
               На выбранный слот уже назначено более 7 номеров.
             </p>
             <button onClick={() => setShowWarning(false)}>Ок</button>
+          </div>
+        </div>
+      )}
+
+      {confirmIndex !== null && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1001
+        }}>
+          <div style={{
+            backgroundColor: "#fff",
+            padding: "24px 32px",
+            borderRadius: "12px",
+            boxShadow: "0 6px 24px rgba(0,0,0,0.25)",
+            maxWidth: "300px",
+            width: "100%",
+            textAlign: "center"
+          }}>
+            <p style={{ marginBottom: "16px" }}>Удалить этот заказ?</p>
+            <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
+              <button onClick={() => confirmDeleteOrder(confirmIndex)}>Да</button>
+              <button onClick={() => setConfirmIndex(null)}>Нет</button>
+            </div>
           </div>
         </div>
       )}

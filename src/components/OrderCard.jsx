@@ -22,10 +22,10 @@ export default function OrderCard({ order, index }) {
       boxShadow: "0 4px 10px rgba(0, 0, 0, 0.05)",
       fontSize: "14px",
       lineHeight: "1.6",
-      minWidth: 240,
-      maxWidth: 240,
-      minHeight: 200,
-      maxHeight: 200,
+      minWidth: 260,
+      maxWidth: 260,
+      minHeight: 240,
+      maxHeight: 240,
       display: "flex",
       flexDirection: "column",
       justifyContent: "space-between",
@@ -57,7 +57,7 @@ export default function OrderCard({ order, index }) {
         <div><strong>Блюдо 2:</strong> {order.dish2 || <span style={{ color: '#bbb' }}>не выбрано</span>}</div>
         <div><strong>Напиток:</strong> {order.drinks || <span style={{ color: '#bbb' }}>не выбрано</span>}</div>
 
-        <div>
+        <div style={{ marginBottom: "2px" }}>
           <strong>Допы:</strong>{" "}
           {order.extras?.length > 0
             ? order.extras.join(", ")
@@ -65,7 +65,7 @@ export default function OrderCard({ order, index }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 10, overflowY: "auto", maxHeight: 60 }}>
+      <div style={{ marginTop: 4, overflowY: "auto", maxHeight: 80 }}>
         <strong>Комментарий:</strong><br />
         <span style={{
           fontStyle: "italic",

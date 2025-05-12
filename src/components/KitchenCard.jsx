@@ -56,20 +56,22 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
               border: "1px solid #e0e0e0"
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <div style={{ fontWeight: "bold" }}>
-                Завтрак {index + 1}
-                {isSameDay && (
-                  <span style={{
-                    marginLeft: 8,
-                    fontSize: "12px",
-                    padding: "2px 6px",
-                    backgroundColor: "#ffeb3b",
-                    borderRadius: 6
-                  }}>
-                    Создан сегодня
-                  </span>
-                )}
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: 8,
+              alignItems: "center"
+            }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                fontWeight: "bold",
+                gap: "6px",
+                whiteSpace: "nowrap",
+                overflow: "hidden"
+              }}>
+                <span style={{ whiteSpace: "nowrap" }}>Завтрак {index + 1}</span>
+                {/* Убрали "Создан сегодня", но логика isSameDay осталась */}
               </div>
               <div style={{
                 fontSize: "12px",
@@ -82,11 +84,11 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
               </div>
             </div>
 
-            {dish1 && <div>{dish1}</div>}
-            {dish2 && <div>{dish2}</div>}
-            {drinks && <div style={{ marginTop: "4px" }}>{drinks}</div>}
+            {dish1 && <div style={{ marginBottom: "2px" }}>{dish1}</div>}
+            {dish2 && <div style={{ marginBottom: "2px" }}>{dish2}</div>}
+            {drinks && <div style={{ marginBottom: "2px" }}>{drinks}</div>}
             {extrasList.length > 0 && (
-              <div style={{ marginTop: "4px" }}>{extrasList.join(", ")}</div>
+              <div style={{ marginBottom: "2px" }}>{extrasList.join(", ")}</div>
             )}
             {comment && (
               <div style={{ fontStyle: "italic", marginTop: "6px" }}>
