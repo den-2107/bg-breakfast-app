@@ -1,0 +1,53 @@
+/* index.css — глобальные стили */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background-color: #f4f4f4;
+  color: #222;
+}
+
+button {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+
+button:hover {
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid #ccc;
+}
+
+h1, h2, h3 {
+  margin: 0;
+  font-weight: bold;
+}
+
+input, select {
+  font-size: 14px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
