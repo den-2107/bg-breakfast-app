@@ -26,9 +26,15 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
     Array.isArray(orderList) && orderList.some(order => order && Object.keys(order).length > 0)
   );
 
+  let totalRooms = 0;
+  let totalOrders = 0;
+
   for (const [room, orderList] of filteredRooms) {
     const filteredOrders = orderList.filter(order => !isToGo(order?.toGo));
     if (filteredOrders.length === 0) continue;
+
+    totalRooms++;
+    totalOrders += filteredOrders.length;
 
     const slot = times?.[room] || "Не выбрано";
     if (!ordersBySlot[slot]) ordersBySlot[slot] = [];
@@ -37,7 +43,15 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
 
   return (
     <div style={{ padding: "0 20px 20px" }}>
-      {Object.entries(ordersBySlot).map(([slot, roomEntries]) => {
+      <div style={{
+        marginBottom: "12px",
+        fontWeight: "bold",
+        fontSize: "18px"
+      }}>
+        Завтраки: {totalRooms} номеров / {totalOrders} заказов
+      </div>
+
+      {Object.entries(ordersBySlot).map(([slot, roomEntries], idx) => {
         const sortedRooms = [...roomEntries].sort(([roomA, ordersA], [roomB, ordersB]) => {
           const hasUrgentA = ordersA.some((o) => o.urgent);
           const hasUrgentB = ordersB.some((o) => o.urgent);
@@ -48,13 +62,20 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
           return roomA.localeCompare(roomB, "ru", { numeric: true });
         });
 
-        if (sortedRooms.length === 0) return null;
-
         return (
           <div key={slot} style={{ marginBottom: "24px" }}>
+            {idx > 0 && (
+              <div style={{
+                height: "1px",
+                backgroundColor: "#ccc",
+                margin: "20px 0"
+              }} />
+            )}
+
             <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "10px" }}>
               {slot}
             </h2>
+
             <div
               style={{
                 display: "flex",
@@ -63,17 +84,23 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
                 alignItems: "flex-start"
               }}
             >
-              {sortedRooms.map(([room, roomOrders]) => (
-                <div key={room} style={{ width: "300px" }}>
-                  <KitchenCard
-                    room={room}
-                    orders={roomOrders}
-                    isPriority={roomOrders.some((o) => o.urgent)}
-                    selectedDate={selectedDate}
-                    setOrdersByDate={setOrdersByDate}
-                  />
+              {sortedRooms.length > 0 ? (
+                sortedRooms.map(([room, roomOrders]) => (
+                  <div key={room} style={{ width: "300px" }}>
+                    <KitchenCard
+                      room={`${room} (${roomOrders.length} чел.)`}
+                      orders={roomOrders}
+                      isPriority={roomOrders.some((o) => o.urgent)}
+                      selectedDate={selectedDate}
+                      setOrdersByDate={setOrdersByDate}
+                    />
+                  </div>
+                ))
+              ) : (
+                <div style={{ color: "#888", fontStyle: "italic", paddingLeft: "8px" }}>
+                  Нет заказов в этом слоте
                 </div>
-              ))}
+              )}
             </div>
           </div>
         );

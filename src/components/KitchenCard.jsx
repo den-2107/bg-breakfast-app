@@ -22,6 +22,8 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
     });
   };
 
+  const roomName = room.replace(/\s*\(.*?\)/, "");
+
   return (
     <div style={{
       backgroundColor: "#fff",
@@ -31,7 +33,7 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
       boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
     }}>
       <div style={{ fontWeight: "bold", fontSize: "18px", marginBottom: "12px" }}>
-        Комната {room}{isPriority ? " — приоритет" : ""}
+        Номер {roomName} ({orders.length} чел.){isPriority ? " приоритет" : ""}
       </div>
 
       {orders.map((order, index) => {
@@ -46,61 +48,92 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
           : Array.isArray(extras) ? extras : [];
 
         return (
-          <div
-            key={index}
-            style={{
-              backgroundColor: isSameDay ? "#fffbe6" : "#f9f9f9",
-              borderRadius: "6px",
-              padding: "10px 12px",
-              marginBottom: index < orders.length - 1 ? "12px" : "0",
-              border: "1px solid #e0e0e0"
-            }}
-          >
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: 8,
-              alignItems: "center"
-            }}>
+          <React.Fragment key={index}>
+            {index > 0 && (
+              <div style={{
+                height: "1px",
+                backgroundColor: "#333",
+                margin: "14px 0"
+              }} />
+            )}
+
+            <div
+              style={{
+                backgroundColor: isSameDay ? "#fffbe6" : "#f9f9f9",
+                borderRadius: "6px",
+                padding: "10px 12px",
+                border: "1px solid #e0e0e0"
+              }}
+            >
               <div style={{
                 display: "flex",
-                alignItems: "center",
-                fontWeight: "bold",
-                gap: "6px",
-                whiteSpace: "nowrap",
-                overflow: "hidden"
+                justifyContent: "space-between",
+                marginBottom: 8,
+                alignItems: "center"
               }}>
-                <span style={{ whiteSpace: "nowrap" }}>Завтрак {index + 1}</span>
-                {/* Убрали "Создан сегодня", но логика isSameDay осталась */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  fontWeight: "bold",
+                  gap: "6px"
+                }}>
+                  Завтрак {index + 1}
+                </div>
+                <div style={{
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  padding: "2px 6px",
+                  borderRadius: "4px",
+                  ...getStatusStyle(status)
+                }}>
+                  {status === "done" ? "Доставлен" : status === "cancelled" ? "Отказ" : "Ожидается"}
+                </div>
               </div>
+
+              {dish1 && (
+                <>
+                  <div>{dish1}</div>
+                  <div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} />
+                </>
+              )}
+              {dish2 && (
+                <>
+                  <div>{dish2}</div>
+                  <div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} />
+                </>
+              )}
+              {drinks && (
+                <>
+                  <div>{drinks}</div>
+                  <div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} />
+                </>
+              )}
+              {extrasList.length > 0 && (
+                <>
+                  <div>{extrasList.join(", ")}</div>
+                  <div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} />
+                </>
+              )}
+
+              {/* Комментарий - улучшенный стиль */}
               <div style={{
-                fontSize: "12px",
-                fontWeight: "bold",
-                padding: "2px 6px",
-                borderRadius: "4px",
-                ...getStatusStyle(status)
+                marginTop: "6px",
+                padding: "6px 10px",
+                backgroundColor: "#f2f2f2",
+                borderRadius: "6px",
+                fontStyle: "italic",
+                fontSize: "14px",
+                color: comment ? "#444" : "#888"
               }}>
-                {status === "done" ? "Доставлен" : status === "cancelled" ? "Отказ" : "Ожидается"}
+                <strong>Комментарий:</strong> {comment || "—"}
+              </div>
+
+              <div style={{ marginTop: 8, display: "flex", gap: "8px" }}>
+                <button onClick={() => handleStatusChange(index, "done")}>Доставлен</button>
+                <button onClick={() => handleStatusChange(index, "cancelled")}>Отказ</button>
               </div>
             </div>
-
-            {dish1 && <div style={{ marginBottom: "2px" }}>{dish1}</div>}
-            {dish2 && <div style={{ marginBottom: "2px" }}>{dish2}</div>}
-            {drinks && <div style={{ marginBottom: "2px" }}>{drinks}</div>}
-            {extrasList.length > 0 && (
-              <div style={{ marginBottom: "2px" }}>{extrasList.join(", ")}</div>
-            )}
-            {comment && (
-              <div style={{ fontStyle: "italic", marginTop: "6px" }}>
-                Комментарий: {comment}
-              </div>
-            )}
-
-            <div style={{ marginTop: 8, display: "flex", gap: "8px" }}>
-              <button onClick={() => handleStatusChange(index, "done")}>Доставлен</button>
-              <button onClick={() => handleStatusChange(index, "cancelled")}>Отказ</button>
-            </div>
-          </div>
+          </React.Fragment>
         );
       })}
     </div>

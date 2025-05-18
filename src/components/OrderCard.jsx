@@ -32,7 +32,6 @@ export default function OrderCard({ order, index }) {
       overflow: "hidden",
       position: "relative"
     }}>
-      {/* Статус */}
       <div style={{
         position: "absolute",
         top: "10px",

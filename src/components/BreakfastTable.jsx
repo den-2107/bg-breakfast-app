@@ -49,17 +49,17 @@ export default function BreakfastTable({
                 borderBottom: "2px solid #ccc",
                 padding: "8px",
                 fontSize: "16px",
-                textAlign: "left" // 👈 левый край
+                textAlign: "left"
               }}
             >
-              Комната
+              Номер
             </th>
             <th
               style={{
                 borderBottom: "2px solid #ccc",
                 padding: "8px",
                 fontSize: "16px",
-                textAlign: "left" // 👈 левый край
+                textAlign: "left" 
               }}
             >
               Время
@@ -89,7 +89,7 @@ export default function BreakfastTable({
               setOrdersByDate={setOrdersByDate}
               setModalRoom={setModalRoom}
               setModalData={setModalData}
-              ordersByDate={ordersByDate} // 👈 добавлено сюда
+              ordersByDate={ordersByDate}
             />
           ))}
         </tbody>
