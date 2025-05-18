@@ -1,9 +1,26 @@
-// ===== Modal.jsx =====
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DishSelector from "./DishSelector";
 
 export default function Modal({ room, data, setData, onClose, onSave }) {
   const [selectingDish, setSelectingDish] = useState(null);
+
+  // Если хотя бы один заказ в этой комнате срочный — автоматически включаем галочку "Срочно"
+  useEffect(() => {
+    if (!("urgent" in data)) {
+      try {
+        const saved = localStorage.getItem("ordersByDate");
+        const all = saved ? JSON.parse(saved) : {};
+        const todayKey = new Date().toLocaleDateString("sv-SE");
+        const roomOrders = all?.[todayKey]?.[room] || [];
+        const hasUrgent = roomOrders.some((o) => o?.urgent);
+        if (hasUrgent) {
+          setData((prev) => ({ ...prev, urgent: true }));
+        }
+      } catch (err) {
+        console.error("Ошибка при чтении срочности:", err);
+      }
+    }
+  }, []);
 
   const handleDishSelect = (type, value) => {
     setData(prev => ({ ...prev, [type]: value }));
@@ -74,7 +91,7 @@ export default function Modal({ room, data, setData, onClose, onSave }) {
           />
         </div>
 
-        {/* Добавлена галочка "Срочно" */}
+        {/* Галочка "Срочно" */}
         <div style={{ marginBottom: 10 }}>
           <label>
             <input

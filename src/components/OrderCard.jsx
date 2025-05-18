@@ -24,12 +24,9 @@ export default function OrderCard({ order, index }) {
       lineHeight: "1.6",
       minWidth: 260,
       maxWidth: 260,
-      minHeight: 240,
-      maxHeight: 240,
+      minHeight: 280,
       display: "flex",
       flexDirection: "column",
-      justifyContent: "space-between",
-      overflow: "hidden",
       position: "relative"
     }}>
       <div style={{
@@ -55,23 +52,26 @@ export default function OrderCard({ order, index }) {
         <div><strong>Блюдо 1:</strong> {order.dish1 || <span style={{ color: '#bbb' }}>не выбрано</span>}</div>
         <div><strong>Блюдо 2:</strong> {order.dish2 || <span style={{ color: '#bbb' }}>не выбрано</span>}</div>
         <div><strong>Напиток:</strong> {order.drinks || <span style={{ color: '#bbb' }}>не выбрано</span>}</div>
-
-        <div style={{ marginBottom: "2px" }}>
-          <strong>Допы:</strong>{" "}
+        <div><strong>Допы:</strong>{" "}
           {order.extras?.length > 0
             ? order.extras.join(", ")
             : <span style={{ color: '#bbb' }}>не выбрано</span>}
         </div>
       </div>
 
-      <div style={{ marginTop: 4, overflowY: "auto", maxHeight: 80 }}>
+      <div style={{
+        marginTop: "8px",
+        padding: "6px 0 0",
+        fontSize: "14px",
+        overflowY: "auto",
+        maxHeight: 100
+      }}>
         <strong>Комментарий:</strong><br />
         <span style={{
           fontStyle: "italic",
           color: order.comment ? "#444" : "#bbb",
           wordBreak: "break-word",
-          whiteSpace: "pre-wrap",
-          overflowWrap: "break-word"
+          whiteSpace: "pre-wrap"
         }}>
           {order.comment || "введите комментарий"}
         </span>
