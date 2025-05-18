@@ -1,7 +1,17 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 export default function KitchenCard({ room, orders, isPriority, selectedDate, setOrdersByDate }) {
   const today = new Date().toDateString();
+  const dateKey = selectedDate.toLocaleDateString("sv-SE");
+  const roomName = room.replace(/\s*\(.*?\)/, "");
+
+  const initialStatus = orders[0]?.status || "pending";
+  const initialDeliveredAt = orders[0]?.deliveredAt || null;
+
+  const [status, setStatus] = useState(initialStatus);
+  const [deliveredTime, setDeliveredTime] = useState(initialDeliveredAt);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef();
 
   const getStatusStyle = (status) => {
     switch (status) {
@@ -11,18 +21,54 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
     }
   };
 
-  const handleStatusChange = (index, newStatus) => {
-    setOrdersByDate(prev => {
+  const handleStatusSelect = (newStatus) => {
+    setStatus(newStatus);
+    setMenuOpen(false);
+
+    if (newStatus !== "done") {
+      setDeliveredTime(null);
+    }
+
+    setOrdersByDate((prev) => {
       const newData = { ...prev };
-      const dateKey = selectedDate.toLocaleDateString("sv-SE");
-      const roomOrders = newData[dateKey]?.[room];
+      const roomOrders = newData[dateKey]?.[roomName];
       if (!roomOrders) return prev;
-      roomOrders[index].status = newStatus;
-      return { ...newData };
+      newData[dateKey][roomName] = roomOrders.map((o) => ({
+        ...o,
+        status: newStatus,
+        deliveredAt: newStatus === "done" ? o.deliveredAt : null
+      }));
+      return newData;
     });
   };
 
-  const roomName = room.replace(/\s*\(.*?\)/, "");
+  const handleDelivered = () => {
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    setStatus("done");
+    setDeliveredTime(time);
+
+    setOrdersByDate((prev) => {
+      const newData = { ...prev };
+      const roomOrders = newData[dateKey]?.[roomName];
+      if (!roomOrders) return prev;
+      newData[dateKey][roomName] = roomOrders.map((o) => ({
+        ...o,
+        status: "done",
+        deliveredAt: time
+      }));
+      return newData;
+    });
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <div style={{
@@ -32,15 +78,58 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
       marginBottom: "14px",
       boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
     }}>
-      <div style={{ fontWeight: "bold", fontSize: "18px", marginBottom: "12px" }}>
+      <div style={{ fontWeight: "bold", fontSize: "18px", marginBottom: "6px" }}>
         Номер {roomName} ({orders.length} чел.){isPriority ? " приоритет" : ""}
       </div>
 
+      <div style={{ display: "flex", alignItems: "center", marginBottom: "12px" }}>
+        <span style={{ fontWeight: "bold", marginRight: 6 }}>Статус:</span>
+        <div
+          style={{
+            ...getStatusStyle(status),
+            padding: "2px 8px",
+            borderRadius: "6px",
+            fontWeight: "bold",
+            cursor: "pointer",
+            position: "relative"
+          }}
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          {status === "done" ? "Доставлен" : status === "cancelled" ? "Отказ" : "Ожидается"}
+        </div>
+        {menuOpen && (
+          <div
+            ref={menuRef}
+            style={{
+              position: "absolute",
+              marginTop: "30px",
+              backgroundColor: "#fff",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              borderRadius: "6px",
+              zIndex: 1000
+            }}
+          >
+            <div
+              onClick={() => handleStatusSelect("pending")}
+              style={{ padding: "8px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
+            >
+              Ожидается
+            </div>
+            <div
+              onClick={() => handleStatusSelect("cancelled")}
+              style={{ padding: "8px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
+            >
+              Отказ
+            </div>
+          </div>
+        )}
+      </div>
+
       {orders.map((order, index) => {
-        const { dish1, dish2, drinks, extras, comment, createdAt, status = "pending" } = order;
+        const { dish1, dish2, drinks, extras, comment } = order;
         const isSameDay =
-          createdAt &&
-          new Date(createdAt).toDateString() === today &&
+          order?.createdAt &&
+          new Date(order.createdAt).toDateString() === today &&
           selectedDate.toDateString() === today;
 
         const extrasList = typeof extras === "string"
@@ -65,30 +154,7 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
                 border: "1px solid #e0e0e0"
               }}
             >
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 8,
-                alignItems: "center"
-              }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  fontWeight: "bold",
-                  gap: "6px"
-                }}>
-                  Завтрак {index + 1}
-                </div>
-                <div style={{
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                  ...getStatusStyle(status)
-                }}>
-                  {status === "done" ? "Доставлен" : status === "cancelled" ? "Отказ" : "Ожидается"}
-                </div>
-              </div>
+              <div style={{ fontWeight: "bold", marginBottom: 4 }}>Завтрак {index + 1}</div>
 
               {dish1 && (
                 <>
@@ -129,15 +195,33 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
               }}>
                 <strong>Комментарий:</strong> {comment || "—"}
               </div>
-
-              <div style={{ marginTop: 8, display: "flex", gap: "8px" }}>
-                <button onClick={() => handleStatusChange(index, "done")}>Доставлен</button>
-                <button onClick={() => handleStatusChange(index, "cancelled")}>Отказ</button>
-              </div>
             </div>
           </React.Fragment>
         );
       })}
+
+      <div style={{ marginTop: "12px" }}>
+        <button
+          onClick={handleDelivered}
+          style={{
+            width: "100%",
+            padding: "8px 0",
+            backgroundColor: status === "done" ? "#52c41a" : "#fff",
+            color: status === "done" ? "white" : "#000",
+            border: "1px solid #aaa",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontWeight: "bold"
+          }}
+        >
+          Доставлено
+        </button>
+        {status === "done" && deliveredTime && (
+          <div style={{ marginTop: "6px", textAlign: "center", color: "#555", fontSize: "14px" }}>
+            Доставлено в {deliveredTime}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

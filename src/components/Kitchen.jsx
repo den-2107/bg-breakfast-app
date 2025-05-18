@@ -4,7 +4,7 @@ import KitchenCard from "./KitchenCard";
 export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrdersByDate }) {
   const [showAlert, setShowAlert] = useState(false);
   const [alertSlot, setAlertSlot] = useState(null);
-  const shownSlotsRef = useRef(new Set());
+  const shownRoomsRef = useRef(new Set());
 
   const dateKey = selectedDate.toLocaleDateString("sv-SE");
   const orders = ordersByDate?.[dateKey] || {};
@@ -30,10 +30,10 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem("shownTodaySlots") || "[]");
-      shownSlotsRef.current = new Set(saved);
+      const saved = JSON.parse(localStorage.getItem("shownTodayRooms") || "[]");
+      shownRoomsRef.current = new Set(saved);
     } catch {
-      shownSlotsRef.current = new Set();
+      shownRoomsRef.current = new Set();
     }
   }, []);
 
@@ -41,17 +41,20 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
     if (selectedDate.toDateString() !== todayStr) return;
 
     for (const [room, orderList] of Object.entries(orders)) {
+      if (shownRoomsRef.current.has(room)) continue;
+
       const hasTodayOrder = orderList?.some(order =>
         !isToGo(order?.toGo) &&
         order?.createdAt &&
         new Date(order.createdAt).toDateString() === todayStr
       );
 
-      const slot = times?.[room] || "Не выбрано";
-
-      if (hasTodayOrder && !shownSlotsRef.current.has(slot)) {
+      if (hasTodayOrder) {
+        const slot = times?.[room] || "Не выбрано";
         setAlertSlot(slot);
         setShowAlert(true);
+        shownRoomsRef.current.add(room);
+        localStorage.setItem("shownTodayRooms", JSON.stringify([...shownRoomsRef.current]));
         break;
       }
     }
@@ -96,13 +99,7 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
               Появился новый завтрак на слот {alertSlot || "Не выбрано"}
             </p>
             <button
-              onClick={() => {
-                setShowAlert(false);
-                if (alertSlot) {
-                  shownSlotsRef.current.add(alertSlot);
-                  localStorage.setItem("shownTodaySlots", JSON.stringify([...shownSlotsRef.current]));
-                }
-              }}
+              onClick={() => setShowAlert(false)}
               style={{
                 fontSize: "14px",
                 padding: "4px 10px",

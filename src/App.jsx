@@ -65,10 +65,21 @@ export default function App() {
     localStorage.setItem("timeByDate", JSON.stringify(timeByDate));
   }, [timeByDate]);
 
-  // После загрузки убираем сохранённую вкладку и дату, чтобы не сохранялись навсегда
+  // ⛔ удаляем старые tab/date, но сохраняем состояние показа модалки
   useEffect(() => {
     localStorage.removeItem("selectedTab");
     localStorage.removeItem("selectedDate");
+  }, []);
+
+  // ✅ сбрасываем список показанных слотов утром нового дня
+  useEffect(() => {
+    const todayStr = new Date().toDateString();
+    const lastShownDate = localStorage.getItem("shownTodayDate");
+
+    if (lastShownDate !== todayStr) {
+      localStorage.removeItem("shownTodaySlots");
+      localStorage.setItem("shownTodayDate", todayStr);
+    }
   }, []);
 
   const handleSave = () => {
