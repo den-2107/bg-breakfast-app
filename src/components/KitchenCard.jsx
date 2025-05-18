@@ -115,7 +115,6 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
                 </>
               )}
 
-              {/* Комментарий - улучшенный стиль */}
               <div style={{
                 marginTop: "6px",
                 padding: "6px 10px",
@@ -123,7 +122,10 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
                 borderRadius: "6px",
                 fontStyle: "italic",
                 fontSize: "14px",
-                color: comment ? "#444" : "#888"
+                color: comment ? "#444" : "#888",
+                overflowWrap: "break-word",
+                wordBreak: "break-word",
+                whiteSpace: "pre-wrap"
               }}>
                 <strong>Комментарий:</strong> {comment || "—"}
               </div>

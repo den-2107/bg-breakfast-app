@@ -13,15 +13,22 @@ const ROOMS = [
 ];
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState("breakfasts");
+  const [currentPage, setCurrentPage] = useState(() => {
+    return localStorage.getItem("selectedTab") || "breakfasts";
+  });
+
+  const [kitchenDate, setKitchenDate] = useState(() => {
+    const saved = localStorage.getItem("selectedDate");
+    return saved ? new Date(saved) : new Date();
+  });
 
   const [breakfastDate, setBreakfastDate] = useState(() => {
+    const saved = localStorage.getItem("selectedDate");
+    if (saved) return new Date(saved);
     const date = new Date();
     date.setDate(date.getDate() + 1);
     return date;
   });
-
-  const [kitchenDate, setKitchenDate] = useState(() => new Date());
 
   const selectedDate = currentPage === "kitchen" ? kitchenDate : breakfastDate;
 
@@ -57,6 +64,12 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("timeByDate", JSON.stringify(timeByDate));
   }, [timeByDate]);
+
+  // После загрузки убираем сохранённую вкладку и дату, чтобы не сохранялись навсегда
+  useEffect(() => {
+    localStorage.removeItem("selectedTab");
+    localStorage.removeItem("selectedDate");
+  }, []);
 
   const handleSave = () => {
     if (isSavingRef.current || !modalRoom || !dateKey) return;
