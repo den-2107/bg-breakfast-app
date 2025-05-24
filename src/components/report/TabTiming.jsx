@@ -77,8 +77,6 @@ export default function TabTiming({ startDate, endDate, onStatsReady }) {
 
     const sorted = Object.entries(stats).sort(([, a], [, b]) => b.total - a.total);
     setTimingStats(sorted);
-
-    // 🚫 Избегаем зацикливания: только если новые данные
     const newJSON = JSON.stringify(sorted);
     if (onStatsReady && newJSON !== lastSentJSON) {
       onStatsReady(sorted);
