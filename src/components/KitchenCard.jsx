@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import dayjs from "dayjs";
 
 export default function KitchenCard({ room, orders, isPriority, selectedDate, setOrdersByDate }) {
   const today = new Date().toDateString();
@@ -44,11 +45,10 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
 
   const handleDelivered = () => {
     const now = new Date();
-    const iso = now.toISOString(); // ← сохраняем в ISO-формате
-    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); // для отображения
+    const iso = now.toISOString();
 
     setStatus("done");
-    setDeliveredTime(time);
+    setDeliveredTime(now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
 
     setOrdersByDate((prev) => {
       const newData = { ...prev };
@@ -57,7 +57,7 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
       newData[dateKey][roomName] = roomOrders.map((o) => ({
         ...o,
         status: "done",
-        deliveredAt: iso // ← корректно
+        deliveredAt: iso
       }));
       return newData;
     });
@@ -199,9 +199,9 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
         >
           Доставлено
         </button>
-        {status === "done" && deliveredTime && (
+        {status === "done" && orders[0]?.deliveredAt && (
           <div style={{ marginTop: "6px", textAlign: "center", color: "#555", fontSize: "14px" }}>
-            Доставлено в {deliveredTime}
+            Доставлено в {dayjs(orders[0].deliveredAt).format("HH:mm")}
           </div>
         )}
       </div>
