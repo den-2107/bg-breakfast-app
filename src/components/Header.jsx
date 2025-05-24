@@ -97,6 +97,10 @@ export default function Header({
               Сегодня
             </button>
           </div>
+        ) : currentPage === "reports" ? (
+          <div style={{ display: "flex", alignItems: "center", fontSize: "28px", fontWeight: "bold" }}>
+            Отчёты
+          </div>
         ) : (
           <div style={{ display: "flex", alignItems: "center" }}>
             <h1 style={{ margin: 0, marginRight: 12, fontSize: "28px", fontWeight: "bold" }}>
@@ -150,6 +154,13 @@ export default function Header({
           disabled={currentPage === "kitchen"}
         >
           Кухня
+        </button>
+        <button
+          onClick={() => onSwitchPage("reports")}
+          style={currentPage === "reports" ? inactiveStyle : buttonStyle}
+          disabled={currentPage === "reports"}
+        >
+          Отчёты
         </button>
         <button onClick={onEditMenu} style={buttonStyle}>
           Редактировать меню

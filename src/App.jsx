@@ -5,6 +5,7 @@ import BreakfastTable from "./components/BreakfastTable";
 import Modal from "./components/Modal";
 import MenuEditor from "./components/MenuEditor";
 import Kitchen from "./components/Kitchen";
+import Reports from "./components/report/Reports";
 
 const ROOMS = [
   "A2", "A4",
@@ -65,13 +66,11 @@ export default function App() {
     localStorage.setItem("timeByDate", JSON.stringify(timeByDate));
   }, [timeByDate]);
 
-  // ⛔ удаляем старые tab/date, но сохраняем состояние показа модалки
   useEffect(() => {
     localStorage.removeItem("selectedTab");
     localStorage.removeItem("selectedDate");
   }, []);
 
-  // ✅ сбрасываем список показанных слотов утром нового дня
   useEffect(() => {
     const todayStr = new Date().toDateString();
     const lastShownDate = localStorage.getItem("shownTodayDate");
@@ -170,6 +169,10 @@ export default function App() {
           timeByDate={timeByDate}
           setOrdersByDate={setOrdersByDate}
         />
+      )}
+
+      {currentPage === "reports" && (
+        <Reports /> // ✅ ПОДКЛЮЧИЛИ НОВУЮ СТРАНИЦУ
       )}
 
       {modalRoom && (

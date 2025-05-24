@@ -43,7 +43,10 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
   };
 
   const handleDelivered = () => {
-    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const now = new Date();
+    const iso = now.toISOString(); // ← сохраняем в ISO-формате
+    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); // для отображения
+
     setStatus("done");
     setDeliveredTime(time);
 
@@ -54,7 +57,7 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
       newData[dateKey][roomName] = roomOrders.map((o) => ({
         ...o,
         status: "done",
-        deliveredAt: time
+        deliveredAt: iso // ← корректно
       }));
       return newData;
     });
@@ -156,30 +159,10 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
             >
               <div style={{ fontWeight: "bold", marginBottom: 4 }}>Завтрак {index + 1}</div>
 
-              {dish1 && (
-                <>
-                  <div>{dish1}</div>
-                  <div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} />
-                </>
-              )}
-              {dish2 && (
-                <>
-                  <div>{dish2}</div>
-                  <div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} />
-                </>
-              )}
-              {drinks && (
-                <>
-                  <div>{drinks}</div>
-                  <div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} />
-                </>
-              )}
-              {extrasList.length > 0 && (
-                <>
-                  <div>{extrasList.join(", ")}</div>
-                  <div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} />
-                </>
-              )}
+              {dish1 && (<><div>{dish1}</div><div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} /></>)}
+              {dish2 && (<><div>{dish2}</div><div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} /></>)}
+              {drinks && (<><div>{drinks}</div><div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} /></>)}
+              {extrasList.length > 0 && (<><div>{extrasList.join(", ")}</div><div style={{ borderBottom: "1px solid #ccc", margin: "6px 0" }} /></>)}
 
               <div style={{
                 marginTop: "6px",
