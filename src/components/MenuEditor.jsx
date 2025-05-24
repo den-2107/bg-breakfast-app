@@ -1,91 +1,110 @@
 import React, { useState, useEffect } from "react";
-
-const DEFAULT_MENU = {
-  dish1: [
-    "Рисовая каша с черникой на кокосовом молоке",
-    "Овсяная каша с ванилью на молоке",
-    "Пшенная каша с тыквой",
-    "Омлет с сыром",
-    "Омлет с беконом",
-    "Йогурт с гранолой"
-  ],
-  dish2: [
-    "Сырники с джемом",
-    "Блины классические",
-    "Блины с мясом",
-    "Блины с творогом",
-    "Чиабатта с курицей",
-    "Панини с говядиной",
-    "Шоколадный маффин",
-    "Апельсиновый маффин",
-    "Злаковый батончик (To Go)"
-  ],
-  drinks: [
-    "Американо",
-    "Капучино",
-    "Чай чёрный",
-    "Чай зеленый",
-    "Сок апельсиновый",
-    "Сок яблочный",
-    "Вода без газа",
-    "Молоко"
-  ],
-  extras: [
-    "Сметана",
-    "Джем",
-    "Мёд",
-    "Тост",
-    "Сливочное масло",
-    "Сливки"
-  ]
-};
+import { supabase } from "../supabaseClient";
 
 export default function MenuEditor({ onClose }) {
-  const [menu, setMenu] = useState(() => {
-    const saved = localStorage.getItem("menu");
-    try {
-      return saved ? JSON.parse(saved) : DEFAULT_MENU;
-    } catch {
-      return DEFAULT_MENU;
-    }
+  const [menu, setMenu] = useState({
+    dish1: [],
+    dish2: [],
+    drinks: [],
+    extras: [],
   });
 
   const [newItem, setNewItem] = useState("");
   const [newCategory, setNewCategory] = useState("dish1");
-  const [confirm, setConfirm] = useState({ cat: null, index: null });
+  const [confirm, setConfirm] = useState({ cat: null, id: null });
 
+  // Загрузка меню из Supabase
   useEffect(() => {
-    localStorage.setItem("menu", JSON.stringify(menu));
-  }, [menu]);
+    async function fetchMenu() {
+      const { data, error } = await supabase
+        .from("menu")
+        .select("id, name, type, group, available")
+        .eq("available", true);
 
-  const handleRemove = (category, index) => {
-    setConfirm({ cat: category, index });
-  };
+      if (error) {
+        console.error("❌ Ошибка загрузки:", error.message);
+        return;
+      }
 
-  const confirmDelete = () => {
-    const { cat, index } = confirm;
-    if (cat !== null && index !== null) {
-      setMenu(prev => ({
-        ...prev,
-        [cat]: prev[cat].filter((_, i) => i !== index)
-      }));
+      const grouped = {
+        dish1: [],
+        dish2: [],
+        drinks: [],
+        extras: [],
+      };
+
+      data.forEach((item) => {
+        if (item.type === "dish") {
+          if (item.group === "dish1") grouped.dish1.push(item);
+          else if (item.group === "dish2") grouped.dish2.push(item);
+        } else if (item.type === "drink") {
+          grouped.drinks.push(item);
+        } else if (item.type === "extra") {
+          grouped.extras.push(item);
+        }
+      });
+
+      setMenu(grouped);
     }
-    setConfirm({ cat: null, index: null });
-  };
 
-  const cancelDelete = () => {
-    setConfirm({ cat: null, index: null });
-  };
+    fetchMenu();
+  }, []);
 
-  const handleAdd = () => {
+  // Добавление
+  const handleAdd = async () => {
     const trimmed = newItem.trim();
     if (!trimmed) return;
-    setMenu(prev => ({
+
+    let type, group = null;
+    if (newCategory === "dish1" || newCategory === "dish2") {
+      type = "dish";
+      group = newCategory;
+    } else if (newCategory === "drinks") {
+      type = "drink";
+    } else if (newCategory === "extras") {
+      type = "extra";
+    }
+
+    const { data, error } = await supabase
+      .from("menu")
+      .insert([{ name: trimmed, type, group, available: true }])
+      .select();
+
+    if (error) {
+      console.error("❌ Ошибка добавления:", error.message);
+      return;
+    }
+
+    setMenu((prev) => ({
       ...prev,
-      [newCategory]: [...prev[newCategory], trimmed]
+      [newCategory]: [...prev[newCategory], data[0]],
     }));
+
     setNewItem("");
   };
+
+  // Удаление
+  const confirmDelete = async () => {
+    const { cat, id } = confirm;
+    if (!id || !cat) return;
+
+    const { error } = await supabase.from("menu").delete().eq("id", id);
+
+    if (error) {
+      console.error("❌ Ошибка удаления:", error.message);
+      return;
+    }
+
+    setMenu((prev) => ({
+      ...prev,
+      [cat]: prev[cat].filter((item) => item.id !== id),
+    }));
+
+    setConfirm({ cat: null, id: null });
+  };
+
+  const cancelDelete = () => setConfirm({ cat: null, id: null });
+  const handleRemove = (category, id) => setConfirm({ cat: category, id });
 
   const getCategoryLabel = (key) => {
     switch (key) {
@@ -101,18 +120,16 @@ export default function MenuEditor({ onClose }) {
     <div key={key} style={{ flex: "1 1 45%" }}>
       <strong>{getCategoryLabel(key)}</strong>
       <ul style={{ paddingLeft: 0, margin: "8px 0", listStyle: "none" }}>
-        {menu[key].map((item, i) => (
-          <li key={i} style={{
+        {menu[key].map((item) => (
+          <li key={item.id} style={{
             marginBottom: "4px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             gap: "8px"
           }}>
-            <span>
-              <span style={{ marginRight: 6 }}>•</span>{item}
-            </span>
-            <button onClick={() => handleRemove(key, i)}>Удалить</button>
+            <span><span style={{ marginRight: 6 }}>•</span>{item.name}</span>
+            <button onClick={() => handleRemove(key, item.id)}>Удалить</button>
           </li>
         ))}
       </ul>
@@ -141,21 +158,19 @@ export default function MenuEditor({ onClose }) {
       }}>
         <h2 style={{ marginBottom: "16px" }}>Редактирование меню</h2>
 
-        {/* Верхние категории */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "32px", marginBottom: "24px" }}>
           {["dish1", "dish2"].map(renderCategory)}
         </div>
 
         <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid #ddd" }} />
 
-        {/* Нижние категории */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "32px", marginBottom: "16px" }}>
           {["drinks", "extras"].map(renderCategory)}
         </div>
 
         <div style={{ marginTop: 16 }}>
           <h3 style={{ marginBottom: 8 }}>Добавить позицию</h3>
-          <select value={newCategory} onChange={e => setNewCategory(e.target.value)}>
+          <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}>
             <option value="dish1">Первое блюдо</option>
             <option value="dish2">Второе блюдо</option>
             <option value="drinks">Напиток</option>
@@ -165,7 +180,7 @@ export default function MenuEditor({ onClose }) {
             type="text"
             placeholder="Название блюда"
             value={newItem}
-            onChange={e => setNewItem(e.target.value)}
+            onChange={(e) => setNewItem(e.target.value)}
             style={{ marginLeft: 10 }}
           />
           <button onClick={handleAdd} style={{ marginLeft: 10 }}>Сохранить</button>
@@ -174,8 +189,7 @@ export default function MenuEditor({ onClose }) {
         <button onClick={onClose} style={{ marginTop: 24 }}>Закрыть</button>
       </div>
 
-      {/* Модалка подтверждения удаления */}
-      {confirm.cat !== null && confirm.index !== null && (
+      {confirm.cat && confirm.id && (
         <div style={{
           position: "fixed",
           top: 0, left: 0, right: 0, bottom: 0,
