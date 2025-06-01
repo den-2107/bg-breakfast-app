@@ -6,6 +6,12 @@ import Modal from "./components/Modal";
 import MenuEditor from "./components/MenuEditor";
 import Kitchen from "./components/Kitchen";
 import Reports from "./components/report/Reports";
+import { MenuProvider } from "./components/MenuProvider";
+import {
+  loadOrdersByDate,
+  saveOrder,
+  updateOrder,
+} from "./components/OrdersService";
 
 const ROOMS = [
   "A2", "A4",
@@ -32,16 +38,9 @@ export default function App() {
   });
 
   const selectedDate = currentPage === "kitchen" ? kitchenDate : breakfastDate;
+  const dateKey = selectedDate.toLocaleDateString("sv-SE");
 
-  const [ordersByDate, setOrdersByDate] = useState(() => {
-    try {
-      const saved = localStorage.getItem("ordersByDate");
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
+  const [ordersByDate, setOrdersByDate] = useState({});
   const [timeByDate, setTimeByDate] = useState(() => {
     try {
       const saved = localStorage.getItem("timeByDate");
@@ -56,11 +55,19 @@ export default function App() {
   const [showMenuEditor, setShowMenuEditor] = useState(false);
   const isSavingRef = useRef(false);
 
-  const dateKey = selectedDate.toLocaleDateString("sv-SE");
-
   useEffect(() => {
-    localStorage.setItem("ordersByDate", JSON.stringify(ordersByDate));
-  }, [ordersByDate]);
+    const fetchOrders = async () => {
+      try {
+        const data = await loadOrdersByDate(dateKey);
+        setOrdersByDate({ [dateKey]: data }); // ← исправлено тут
+      } catch (error) {
+        console.error("Ошибка загрузки заказов:", error);
+        setOrdersByDate({ [dateKey]: {} });
+      }
+    };
+
+    fetchOrders();
+  }, [dateKey]);
 
   useEffect(() => {
     localStorage.setItem("timeByDate", JSON.stringify(timeByDate));
@@ -81,125 +88,131 @@ export default function App() {
     }
   }, []);
 
-  const handleSave = () => {
-    if (isSavingRef.current || !modalRoom || !dateKey) return;
+  const handleSave = async () => {
+    if (!modalRoom || !modalData || isSavingRef.current) return;
     isSavingRef.current = true;
 
-    setOrdersByDate(prev => {
-      const updated = { ...prev };
-      if (!updated[dateKey]) updated[dateKey] = {};
-      const currentOrders = updated[dateKey][modalRoom] || [];
+    const prepareForSave = (value) => {
+      if (value && typeof value === "object") return value.id || value.name || "";
+      return value || "";
+    };
 
-      const newOrder = { ...modalData };
-      delete newOrder.index;
+    const newOrder = {
+      ...modalData,
+      room: modalRoom,
+      date: dateKey,
+      dish1: prepareForSave(modalData.dish1),
+      dish2: prepareForSave(modalData.dish2),
+      drinks: prepareForSave(modalData.drinks),
+      extras: (modalData.extras || []).map((item) =>
+        typeof item === "object" ? item.name || "" : item
+      ),
+      comment: modalData.comment || "",
+      urgent: !!modalData.urgent,
+      time: modalData.time || "",
+    };
 
-      const normalize = (order) => ({
-        dish1: order.dish1 || "",
-        dish2: order.dish2 || "",
-        drinks: order.drinks || "",
-        comment: order.comment || "",
-        extras: (order.extras || []).slice().sort(),
-        toGo: !!order.toGo,
-        urgent: !!order.urgent
-      });
+    try {
+      let savedOrder;
 
-      const normalizedNew = normalize(newOrder);
-
-      if (typeof modalData.index === "number") {
-        currentOrders[modalData.index] = {
-          ...normalizedNew,
-          createdAt: currentOrders[modalData.index]?.createdAt || new Date().toISOString(),
-          status: currentOrders[modalData.index]?.status || "ожидается"
-        };
+      if (modalData.id) {
+        savedOrder = await updateOrder(modalData.id, newOrder);
       } else {
-        const last = currentOrders.slice(-1)[0];
-        const normalizedLast = normalize(last || {});
-        const isDuplicate = JSON.stringify(normalizedLast) === JSON.stringify(normalizedNew);
-        if (!isDuplicate) {
-          currentOrders.push({
-            ...normalizedNew,
-            createdAt: new Date().toISOString(),
-            status: "ожидается"
-          });
-        }
+        savedOrder = await saveOrder(newOrder);
       }
 
-      updated[dateKey][modalRoom] = currentOrders;
-      return updated;
-    });
+      setOrdersByDate((prev) => {
+        const updated = { ...prev };
+        const byRoom = { ...(updated[dateKey] || {}) };
+        const roomOrders = [...(byRoom[modalRoom] || [])];
 
-    setModalRoom(null);
-    setModalData(null);
-    setTimeout(() => {
+        if (modalData.id) {
+          const index = roomOrders.findIndex((o) => o.id === modalData.id);
+          if (index !== -1) roomOrders[index] = savedOrder;
+        } else {
+          roomOrders.push(savedOrder);
+        }
+
+        byRoom[modalRoom] = roomOrders;
+        updated[dateKey] = byRoom;
+        return updated;
+      });
+
+      setModalRoom(null);
+      setModalData(null);
+    } catch (error) {
+      console.error("Ошибка при сохранении заказа:", error);
+      alert("Не удалось сохранить заказ");
+    } finally {
       isSavingRef.current = false;
-    }, 300);
+    }
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f4f4f4", padding: 20 }}>
-      <Header
-        currentPage={currentPage}
-        onSwitchPage={setCurrentPage}
-        selectedDate={selectedDate}
-        setSelectedDate={currentPage === "kitchen" ? setKitchenDate : setBreakfastDate}
-        onEditMenu={() => setShowMenuEditor(true)}
-      />
-
-      {currentPage === "breakfasts" && (
-        <BreakfastTable
-          selectedDate={breakfastDate}
-          timeByDate={timeByDate}
-          setTimeByDate={setTimeByDate}
-          setOrdersByDate={setOrdersByDate}
-          setModalRoom={setModalRoom}
-          setModalData={setModalData}
-          rooms={ROOMS}
-          orders={ordersByDate[breakfastDate.toLocaleDateString("sv-SE")] || {}}
-          onAddClick={(roomName) => {
-            setModalRoom(roomName);
-            setModalData({});
-          }}
+    <MenuProvider>
+      <div style={{ minHeight: "100vh", background: "#f4f4f4", padding: 20 }}>
+        <Header
+          currentPage={currentPage}
+          onSwitchPage={setCurrentPage}
+          selectedDate={selectedDate}
+          setSelectedDate={currentPage === "kitchen" ? setKitchenDate : setBreakfastDate}
+          onEditMenu={() => setShowMenuEditor(true)}
         />
-      )}
 
-      {currentPage === "kitchen" && (
-        <Kitchen
-          selectedDate={kitchenDate}
-          ordersByDate={ordersByDate}
-          timeByDate={timeByDate}
-          setOrdersByDate={setOrdersByDate}
-        />
-      )}
+        {currentPage === "breakfasts" && (
+          <BreakfastTable
+            selectedDate={breakfastDate}
+            timeByDate={timeByDate}
+            setTimeByDate={setTimeByDate}
+            setOrdersByDate={setOrdersByDate}
+            setModalRoom={setModalRoom}
+            setModalData={setModalData}
+            rooms={ROOMS}
+            orders={ordersByDate[dateKey] || {}}
+            onAddClick={(roomName) => {
+              setModalRoom(roomName);
+              setModalData({});
+            }}
+          />
+        )}
 
-      {currentPage === "reports" && (
-        <Reports /> // ✅ ПОДКЛЮЧИЛИ НОВУЮ СТРАНИЦУ
-      )}
+        {currentPage === "kitchen" && (
+          <Kitchen
+            selectedDate={kitchenDate}
+            ordersByDate={ordersByDate}
+            timeByDate={timeByDate}
+            setOrdersByDate={setOrdersByDate}
+          />
+        )}
 
-      {modalRoom && (
-        <Modal
-          room={modalRoom}
-          data={modalData}
-          setData={setModalData}
-          onClose={() => setModalRoom(null)}
-          onSave={handleSave}
-        />
-      )}
+        {currentPage === "reports" && <Reports />}
 
-      {showMenuEditor && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.5)", display: "flex",
-          justifyContent: "center", alignItems: "center", zIndex: 9999
-        }}>
+        {modalRoom && (
+          <Modal
+            room={modalRoom}
+            data={modalData}
+            setData={setModalData}
+            onClose={() => setModalRoom(null)}
+            onSave={handleSave}
+          />
+        )}
+
+        {showMenuEditor && (
           <div style={{
-            backgroundColor: "#fff", padding: 20, maxWidth: "600px",
-            width: "100%", maxHeight: "90vh", overflowY: "auto",
-            borderRadius: "8px", boxShadow: "0 4px 20px rgba(0,0,0,0.2)"
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)", display: "flex",
+            justifyContent: "center", alignItems: "center", zIndex: 9999
           }}>
-            <MenuEditor onClose={() => setShowMenuEditor(false)} />
+            <div style={{
+              backgroundColor: "#fff", padding: 20, maxWidth: "600px",
+              width: "100%", maxHeight: "90vh", overflowY: "auto",
+              borderRadius: "8px", boxShadow: "0 4px 20px rgba(0,0,0,0.2)"
+            }}>
+              <MenuEditor onClose={() => setShowMenuEditor(false)} />
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </MenuProvider>
   );
 }

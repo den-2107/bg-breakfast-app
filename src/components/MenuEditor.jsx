@@ -1,90 +1,49 @@
-import React, { useState, useEffect } from "react";
-
-const DEFAULT_MENU = {
-  dish1: [
-    "Рисовая каша с черникой на кокосовом молоке",
-    "Овсяная каша с ванилью на молоке",
-    "Пшенная каша с тыквой",
-    "Омлет с сыром",
-    "Омлет с беконом",
-    "Йогурт с гранолой"
-  ],
-  dish2: [
-    "Сырники с джемом",
-    "Блины классические",
-    "Блины с мясом",
-    "Блины с творогом",
-    "Чиабатта с курицей",
-    "Панини с говядиной",
-    "Шоколадный маффин",
-    "Апельсиновый маффин",
-    "Злаковый батончик (To Go)"
-  ],
-  drinks: [
-    "Американо",
-    "Капучино",
-    "Чай чёрный",
-    "Чай зеленый",
-    "Сок апельсиновый",
-    "Сок яблочный",
-    "Вода без газа",
-    "Молоко"
-  ],
-  extras: [
-    "Сметана",
-    "Джем",
-    "Мёд",
-    "Тост",
-    "Сливочное масло",
-    "Сливки"
-  ]
-};
+import React, { useState } from "react";
+import { useMenu } from "./MenuProvider";
 
 export default function MenuEditor({ onClose }) {
-  const [menu, setMenu] = useState(() => {
-    const saved = localStorage.getItem("menu");
-    try {
-      return saved ? JSON.parse(saved) : DEFAULT_MENU;
-    } catch {
-      return DEFAULT_MENU;
-    }
-  });
-
+  const { menu, addDish, deleteDish, reloadMenu } = useMenu();
   const [newItem, setNewItem] = useState("");
   const [newCategory, setNewCategory] = useState("dish1");
-  const [confirm, setConfirm] = useState({ cat: null, index: null });
+  const [confirm, setConfirm] = useState({ id: null, name: "" });
 
-  useEffect(() => {
-    localStorage.setItem("menu", JSON.stringify(menu));
-  }, [menu]);
+  const groupToType = (group) =>
+    group === "drinks" ? "drink" : group === "extras" ? "extra" : "dish";
 
-  const handleRemove = (category, index) => {
-    setConfirm({ cat: category, index });
+  const handleRemove = (id, name) => {
+    setConfirm({ id, name });
   };
 
-  const confirmDelete = () => {
-    const { cat, index } = confirm;
-    if (cat !== null && index !== null) {
-      setMenu(prev => ({
-        ...prev,
-        [cat]: prev[cat].filter((_, i) => i !== index)
-      }));
+  const confirmDelete = async () => {
+    try {
+      await deleteDish(confirm.id);
+      reloadMenu();
+    } catch (err) {
+      console.error("🧨 Ошибка при удалении:", err);
     }
-    setConfirm({ cat: null, index: null });
+    setConfirm({ id: null, name: "" });
   };
 
   const cancelDelete = () => {
-    setConfirm({ cat: null, index: null });
+    setConfirm({ id: null, name: "" });
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const trimmed = newItem.trim();
     if (!trimmed) return;
-    setMenu(prev => ({
-      ...prev,
-      [newCategory]: [...prev[newCategory], trimmed]
-    }));
-    setNewItem("");
+
+    try {
+      await addDish({
+        name: trimmed,
+        type: groupToType(newCategory),
+        group: newCategory,
+        available: true
+      });
+      reloadMenu();
+      setNewItem("");
+    } catch (err) {
+      console.error("🧨 Ошибка при добавлении:", err);
+    }
   };
 
   const getCategoryLabel = (key) => {
@@ -101,8 +60,8 @@ export default function MenuEditor({ onClose }) {
     <div key={key} style={{ flex: "1 1 45%" }}>
       <strong>{getCategoryLabel(key)}</strong>
       <ul style={{ paddingLeft: 0, margin: "8px 0", listStyle: "none" }}>
-        {menu[key].map((item, i) => (
-          <li key={i} style={{
+        {(menu.filter(item => item.group === key) || []).map((item) => (
+          <li key={item.id} style={{
             marginBottom: "4px",
             display: "flex",
             justifyContent: "space-between",
@@ -110,9 +69,9 @@ export default function MenuEditor({ onClose }) {
             gap: "8px"
           }}>
             <span>
-              <span style={{ marginRight: 6 }}>•</span>{item}
+              <span style={{ marginRight: 6 }}>•</span>{item.name}
             </span>
-            <button onClick={() => handleRemove(key, i)}>Удалить</button>
+            <button onClick={() => handleRemove(item.id, item.name)}>Удалить</button>
           </li>
         ))}
       </ul>
@@ -141,14 +100,12 @@ export default function MenuEditor({ onClose }) {
       }}>
         <h2 style={{ marginBottom: "16px" }}>Редактирование меню</h2>
 
-        {/* Верхние категории */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "32px", marginBottom: "24px" }}>
           {["dish1", "dish2"].map(renderCategory)}
         </div>
 
         <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid #ddd" }} />
 
-        {/* Нижние категории */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "32px", marginBottom: "16px" }}>
           {["drinks", "extras"].map(renderCategory)}
         </div>
@@ -174,8 +131,7 @@ export default function MenuEditor({ onClose }) {
         <button onClick={onClose} style={{ marginTop: 24 }}>Закрыть</button>
       </div>
 
-      {/* Модалка подтверждения удаления */}
-      {confirm.cat !== null && confirm.index !== null && (
+      {confirm.id && (
         <div style={{
           position: "fixed",
           top: 0, left: 0, right: 0, bottom: 0,
@@ -194,7 +150,7 @@ export default function MenuEditor({ onClose }) {
             width: "100%",
             textAlign: "center"
           }}>
-            <p style={{ marginBottom: "16px" }}>Удалить выбранный элемент?</p>
+            <p style={{ marginBottom: "16px" }}>Удалить «{confirm.name}»?</p>
             <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
               <button onClick={confirmDelete}>Да</button>
               <button onClick={cancelDelete}>Нет</button>

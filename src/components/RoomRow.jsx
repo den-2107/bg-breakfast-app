@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import OrderCard from "./OrderCard";
+import { deleteOrder } from "./OrdersService"; // ✅
 
 const TIME_SLOTS = [
   "Не выбрано",
@@ -63,31 +64,43 @@ export default function RoomRow({
     });
   };
 
-  const confirmDeleteOrder = (index) => {
-    setOrdersByDate((prev) => {
-      const updated = { ...prev };
-      const currentOrders = [...(updated[dateKey]?.[room] || [])];
-      currentOrders.splice(index, 1);
-
-      if (currentOrders.length === 0) {
-        delete updated[dateKey][room];
-        setTimeByDate((prevTime) => {
-          const timeCopy = { ...prevTime };
-          if (timeCopy[dateKey]) delete timeCopy[dateKey][room];
-          return timeCopy;
-        });
-      } else {
-        updated[dateKey][room] = currentOrders;
-      }
-      return updated;
-    });
-    setConfirmIndex(null);
-  };
-
   const handleEditOrder = (index) => {
     const orderToEdit = orders[index];
     setModalRoom(room);
-    setModalData({ ...orderToEdit, index });
+    setModalData(orderToEdit); // ✅ без index, нужен id
+  };
+
+  const handleDeleteOrder = async (index) => {
+    const orderToDelete = orders[index];
+    if (!orderToDelete?.id) return;
+
+    try {
+      await deleteOrder(orderToDelete.id);
+
+      setOrdersByDate((prev) => {
+        const updated = { ...prev };
+        const currentOrders = (updated[dateKey]?.[room] || []).filter(o => o.id !== orderToDelete.id);
+
+        if (currentOrders.length === 0) {
+          delete updated[dateKey][room];
+          setTimeByDate((prevTime) => {
+            const timeCopy = { ...prevTime };
+            if (timeCopy[dateKey]) delete timeCopy[dateKey][room];
+            return timeCopy;
+          });
+        } else {
+          updated[dateKey][room] = currentOrders;
+        }
+
+        return updated;
+      });
+
+    } catch (error) {
+      console.error("Ошибка при удалении заказа:", error);
+      alert("Не удалось удалить заказ");
+    }
+
+    setConfirmIndex(null);
   };
 
   const handleAddClick = () => {
@@ -194,7 +207,7 @@ export default function RoomRow({
           }}>
             <p style={{ marginBottom: "16px" }}>Удалить этот заказ?</p>
             <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
-              <button onClick={() => confirmDeleteOrder(confirmIndex)}>Да</button>
+              <button onClick={() => handleDeleteOrder(confirmIndex)}>Да</button>
               <button onClick={() => setConfirmIndex(null)}>Нет</button>
             </div>
           </div>
