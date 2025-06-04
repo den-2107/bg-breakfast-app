@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import dayjs from "dayjs";
+import { updateOrder } from "./OrdersService";
 
 export default function KitchenCard({ room, orders, isPriority, selectedDate, setOrdersByDate }) {
-  const today = new Date().toDateString();
   const dateKey = selectedDate.toLocaleDateString("sv-SE");
   const roomName = room.replace(/\s*\(.*?\)/, "");
+
+  const today = dayjs().format("YYYY-MM-DD");
 
   const initialStatus = orders[0]?.status || "pending";
   const initialDeliveredAt = orders[0]?.deliveredAt || null;
@@ -22,43 +24,64 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
     }
   };
 
-  const handleStatusSelect = (newStatus) => {
+  const handleStatusSelect = async (newStatus) => {
     setStatus(newStatus);
     setMenuOpen(false);
+
+    const updatedOrders = await Promise.all(
+      orders.map(async (order) => {
+        const updated = {
+          ...order,
+          status: newStatus,
+          deliveredAt: newStatus === "done" ? order.deliveredAt : null
+        };
+        try {
+          await updateOrder(order.id, updated);
+        } catch (err) {
+          console.error("Ошибка при обновлении статуса:", err);
+        }
+        return updated;
+      })
+    );
+
+    setOrdersByDate((prev) => {
+      const newData = { ...prev };
+      newData[dateKey][roomName] = updatedOrders;
+      return newData;
+    });
 
     if (newStatus !== "done") {
       setDeliveredTime(null);
     }
-
-    setOrdersByDate((prev) => {
-      const newData = { ...prev };
-      const roomOrders = newData[dateKey]?.[roomName];
-      if (!roomOrders) return prev;
-      newData[dateKey][roomName] = roomOrders.map((o) => ({
-        ...o,
-        status: newStatus,
-        deliveredAt: newStatus === "done" ? o.deliveredAt : null
-      }));
-      return newData;
-    });
   };
 
-  const handleDelivered = () => {
+  const handleDelivered = async () => {
     const now = new Date();
     const iso = now.toISOString();
+    const formatted = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     setStatus("done");
-    setDeliveredTime(now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    setDeliveredTime(formatted);
+
+    const updatedOrders = await Promise.all(
+      orders.map(async (order) => {
+        const updated = {
+          ...order,
+          status: "done",
+          deliveredAt: iso
+        };
+        try {
+          await updateOrder(order.id, updated);
+        } catch (err) {
+          console.error("Ошибка при установке deliveredAt:", err);
+        }
+        return updated;
+      })
+    );
 
     setOrdersByDate((prev) => {
       const newData = { ...prev };
-      const roomOrders = newData[dateKey]?.[roomName];
-      if (!roomOrders) return prev;
-      newData[dateKey][roomName] = roomOrders.map((o) => ({
-        ...o,
-        status: "done",
-        deliveredAt: iso
-      }));
+      newData[dateKey][roomName] = updatedOrders;
       return newData;
     });
   };
@@ -129,11 +152,10 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
       </div>
 
       {orders.map((order, index) => {
-        const { dish1, dish2, drinks, extras, comment } = order;
-        const isSameDay =
-          order?.createdAt &&
-          new Date(order.createdAt).toDateString() === today &&
-          selectedDate.toDateString() === today;
+        const { dish1, dish2, drinks, extras, comment, createdAt } = order;
+
+        const isSameDay = dayjs(createdAt).format("YYYY-MM-DD") === today &&
+                          dayjs(selectedDate).format("YYYY-MM-DD") === today;
 
         const extrasList = typeof extras === "string"
           ? extras.split(/[,\\s]+/).filter(Boolean)

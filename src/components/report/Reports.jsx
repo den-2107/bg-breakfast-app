@@ -10,6 +10,7 @@ import TabSummary from "./TabSummary";
 import TabDishes from "./TabDishes";
 import TabSlots from "./TabSlots";
 import TabTiming from "./TabTiming";
+import { loadOrdersInRange } from "./ReportsService";
 
 dayjs.locale("ru");
 
@@ -23,12 +24,21 @@ export default function Reports() {
   const [timingStats, setTimingStats] = useState(null);
   const [timingStartDate, setTimingStartDate] = useState(null);
   const [timingEndDate, setTimingEndDate] = useState(null);
+  const [ordersByDate, setOrdersByDate] = useState(null);
+  const [timeByDate, setTimeByDate] = useState(null);
 
-  const generateReport = () => {
-    const rawOrders = localStorage.getItem("ordersByDate");
-    const rawTimes = localStorage.getItem("timeByDate");
+  const generateReport = async () => {
+    const from = startDate.format("YYYY-MM-DD");
+    const to = endDate.format("YYYY-MM-DD");
 
-    if (!rawOrders) {
+    const result = await loadOrdersInRange(from, to);
+    const localOrdersByDate = result.ordersByDate;
+    const localTimeByDate = result.timeByDate;
+
+    setOrdersByDate(localOrdersByDate);
+    setTimeByDate(localTimeByDate);
+
+    if (!localOrdersByDate || Object.keys(localOrdersByDate).length === 0) {
       setReportData(null);
       setDishesStats(null);
       setSlotStats(null);
@@ -38,29 +48,25 @@ export default function Reports() {
       return;
     }
 
-    const ordersByDate = JSON.parse(rawOrders);
-    const timeByDate = rawTimes ? JSON.parse(rawTimes) : {};
-    const start = startDate.startOf("day");
-    const end = endDate.endOf("day");
-
     let totalOrders = 0;
     const roomsSet = new Set();
     let toGoCount = 0;
     const dishMap = {};
     const slotMap = {};
+    const slotTimingMap = {};
 
-    for (const dateKey in ordersByDate) {
+    for (const dateKey in localOrdersByDate) {
       const currentDate = dayjs(dateKey, "YYYY-MM-DD");
-      if (!currentDate.isValid() || currentDate.isBefore(start) || currentDate.isAfter(end)) continue;
+      if (!currentDate.isValid() || currentDate.isBefore(startDate) || currentDate.isAfter(endDate)) continue;
 
-      const rooms = ordersByDate[dateKey];
+      const rooms = localOrdersByDate[dateKey];
       for (const room in rooms) {
         const roomOrders = rooms[room];
         if (!Array.isArray(roomOrders)) continue;
 
         if (roomOrders.length > 0) roomsSet.add(room);
 
-        const rawSlot = timeByDate?.[dateKey]?.[room];
+        const rawSlot = roomOrders[0]?.time || "Не выбрано";
         const slot = rawSlot || "Не выбрано";
 
         for (const order of roomOrders) {
@@ -74,6 +80,23 @@ export default function Reports() {
           }
 
           slotMap[slot] = (slotMap[slot] || 0) + 1;
+
+          if (!slotTimingMap[slot]) {
+            slotTimingMap[slot] = { total: 0, onTime: 0, late: 0 };
+          }
+
+          slotTimingMap[slot].total++;
+
+          if (order.deliveredAt) {
+            const delivered = dayjs(order.deliveredAt);
+            const endTimePart = slot.split("–")[1] || "09:30";
+            const expected = dayjs(`${dateKey}T${endTimePart}`);
+            if (delivered.isBefore(expected)) {
+              slotTimingMap[slot].onTime++;
+            } else {
+              slotTimingMap[slot].late++;
+            }
+          }
         }
       }
     }
@@ -93,6 +116,7 @@ export default function Reports() {
     if (activeTab === "summary" || activeTab === "timing") {
       setTimingStartDate(startDate);
       setTimingEndDate(endDate);
+      setTimingStats(Object.entries(slotTimingMap).sort((a, b) => b[1].total - a[1].total));
     }
   };
 
@@ -102,13 +126,10 @@ export default function Reports() {
     const addSheet = (data, sheetName) => {
       if (!data || data.length === 0) return;
       const sheet = XLSX.utils.json_to_sheet(data);
-
-      // Автоширина
       const cols = Object.keys(data[0]).map(key => ({
         wch: Math.max(key.length, ...data.map(row => (row[key] + "").length)) + 2
       }));
       sheet["!cols"] = cols;
-
       XLSX.utils.book_append_sheet(workbook, sheet, sheetName);
     };
 
@@ -134,9 +155,7 @@ export default function Reports() {
       ], "Общая статистика");
 
       addSheet(dishesStats.map(([name, count]) => ({ Позиция: name, Количество: count })), "По блюдам");
-
       addSheet(slotStats.map(([slot, count]) => ({ Слот: slot, "Кол-во заказов": count })), "По слотам");
-
       addSheet(timingStats.map(([slot, obj]) => ({
         Слот: slot,
         Всего: obj.total,
@@ -144,7 +163,6 @@ export default function Reports() {
         "С опозданием": obj.late
       })), "Скорость отдачи");
 
-      // Сводный лист
       const fullData = [];
       fullData.push(["Общая статистика"]);
       fullData.push(["Показатель", "Значение"]);
@@ -170,7 +188,6 @@ export default function Reports() {
       );
 
       addAOASheet(fullData, "Полный отчёт");
-
       XLSX.writeFile(workbook, `Отчёт_полный.xlsx`);
     } else {
       let data = [];
@@ -265,6 +282,8 @@ export default function Reports() {
               <TabTiming
                 startDate={timingStartDate}
                 endDate={timingEndDate}
+                ordersByDate={ordersByDate}
+                timeByDate={timeByDate}
                 onStatsReady={stats => setTimingStats(stats)}
               />
             </>
@@ -275,6 +294,8 @@ export default function Reports() {
             <TabTiming
               startDate={timingStartDate}
               endDate={timingEndDate}
+              ordersByDate={ordersByDate}
+              timeByDate={timeByDate}
               onStatsReady={stats => setTimingStats(stats)}
             />
           )}

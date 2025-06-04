@@ -43,14 +43,27 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
     for (const [room, orderList] of Object.entries(orders)) {
       if (shownRoomsRef.current.has(room)) continue;
 
-      const hasTodayOrder = orderList?.some(order =>
-        !isToGo(order?.toGo) &&
-        order?.createdAt &&
-        new Date(order.createdAt).toDateString() === todayStr
-      );
+      console.log(`🔍 Комната: ${room}`);
+
+      const hasTodayOrder = orderList?.some(order => {
+        const createdStr = order?.created;
+        const isToday = createdStr && new Date(createdStr).toDateString() === todayStr;
+        const notToGo = !isToGo(order?.toGo);
+
+        console.log("   🧾 Заказ:", {
+          created: createdStr,
+          isToday,
+          toGo: order?.toGo,
+          notToGo,
+          finalCheck: isToday && notToGo
+        });
+
+        return isToday && notToGo;
+      });
 
       if (hasTodayOrder) {
         const slot = times?.[room] || "Не выбрано";
+        console.log(`✅ Показать модалку: Комната ${room}, слот ${slot}`);
         setAlertSlot(slot);
         setShowAlert(true);
         shownRoomsRef.current.add(room);

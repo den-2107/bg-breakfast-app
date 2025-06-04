@@ -12,6 +12,9 @@ import {
   saveOrder,
   updateOrder,
 } from "./components/OrdersService";
+import {
+  loadTimeSlotsRaw
+} from "./components/TimeSlotsService";
 
 const ROOMS = [
   "A2", "A4",
@@ -41,37 +44,36 @@ export default function App() {
   const dateKey = selectedDate.toLocaleDateString("sv-SE");
 
   const [ordersByDate, setOrdersByDate] = useState({});
-  const [timeByDate, setTimeByDate] = useState(() => {
-    try {
-      const saved = localStorage.getItem("timeByDate");
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [timeByDate, setTimeByDate] = useState({});
 
   const [modalRoom, setModalRoom] = useState(null);
   const [modalData, setModalData] = useState(null);
   const [showMenuEditor, setShowMenuEditor] = useState(false);
   const isSavingRef = useRef(false);
 
+  // ✅ Загружаем заказы и все тайм-слоты на дату (без фильтра по заказам)
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchData = async () => {
       try {
-        const data = await loadOrdersByDate(dateKey);
-        setOrdersByDate({ [dateKey]: data }); // ← исправлено тут
+        const orders = await loadOrdersByDate(dateKey);
+        const slotsArray = await loadTimeSlotsRaw(dateKey);
+
+        const groupedSlots = {};
+        slotsArray.forEach((slot) => {
+          groupedSlots[slot.room] = slot.time;
+        });
+
+        setOrdersByDate({ [dateKey]: orders });
+        setTimeByDate({ [dateKey]: groupedSlots });
       } catch (error) {
-        console.error("Ошибка загрузки заказов:", error);
+        console.error("Ошибка загрузки заказов или слотов:", error);
         setOrdersByDate({ [dateKey]: {} });
+        setTimeByDate({ [dateKey]: {} });
       }
     };
 
-    fetchOrders();
+    fetchData();
   }, [dateKey]);
-
-  useEffect(() => {
-    localStorage.setItem("timeByDate", JSON.stringify(timeByDate));
-  }, [timeByDate]);
 
   useEffect(() => {
     localStorage.removeItem("selectedTab");
@@ -110,6 +112,7 @@ export default function App() {
       comment: modalData.comment || "",
       urgent: !!modalData.urgent,
       time: modalData.time || "",
+      toGo: modalData.toGo || false,
     };
 
     try {
@@ -194,6 +197,9 @@ export default function App() {
             setData={setModalData}
             onClose={() => setModalRoom(null)}
             onSave={handleSave}
+            selectedDate={selectedDate}
+            timeByDate={timeByDate}
+            ordersByDate={ordersByDate}
           />
         )}
 

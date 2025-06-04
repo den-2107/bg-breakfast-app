@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import OrderCard from "./OrderCard";
-import { deleteOrder } from "./OrdersService"; // ✅
+import { deleteOrder, updateOrder } from "./OrdersService";
+import { saveTimeSlot, deleteTimeSlot } from "./TimeSlotsService";
 
 const TIME_SLOTS = [
   "Не выбрано",
@@ -32,13 +33,15 @@ export default function RoomRow({
   const maxReached = orders.length >= 5;
 
   const checkSlotLimit = (newTime) => {
+    if (newTime === "Не выбрано") return false;
     const timesForDate = timeByDate[dateKey] || {};
     const roomsInSlot = Object.values(timesForDate).filter((t) => t === newTime).length;
     return roomsInSlot >= 7;
   };
 
-  const handleTimeChange = (e) => {
+  const handleTimeChange = async (e) => {
     const newTime = e.target.value;
+    const isToGo = newTime === "To Go";
 
     if (checkSlotLimit(newTime)) {
       setShowWarning(true);
@@ -54,20 +57,41 @@ export default function RoomRow({
     setOrdersByDate((prev) => {
       const updated = { ...prev };
       const currentOrders = updated[dateKey]?.[room] || [];
-      const withToGo = currentOrders.map((o) => ({
+      const withUpdatedTime = currentOrders.map((o) => ({
         ...o,
-        toGo: newTime === "To Go"
+        time: newTime,
+        toGo: isToGo
       }));
       if (!updated[dateKey]) updated[dateKey] = {};
-      updated[dateKey][room] = withToGo;
+      updated[dateKey][room] = withUpdatedTime;
       return updated;
     });
+
+    try {
+      await saveTimeSlot(dateKey, room, newTime);
+    } catch (error) {
+      console.error("Ошибка при сохранении временного слота:", error);
+    }
+
+    for (const order of orders) {
+      if (order.id) {
+        try {
+          await updateOrder(order.id, {
+            ...order,
+            time: newTime,
+            toGo: isToGo
+          });
+        } catch (error) {
+          console.error("Ошибка при обновлении времени заказа:", error);
+        }
+      }
+    }
   };
 
   const handleEditOrder = (index) => {
     const orderToEdit = orders[index];
     setModalRoom(room);
-    setModalData(orderToEdit); // ✅ без index, нужен id
+    setModalData(orderToEdit);
   };
 
   const handleDeleteOrder = async (index) => {
@@ -83,6 +107,9 @@ export default function RoomRow({
 
         if (currentOrders.length === 0) {
           delete updated[dateKey][room];
+
+          deleteTimeSlot(dateKey, room);
+
           setTimeByDate((prevTime) => {
             const timeCopy = { ...prevTime };
             if (timeCopy[dateKey]) delete timeCopy[dateKey][room];

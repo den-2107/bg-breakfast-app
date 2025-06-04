@@ -15,21 +15,14 @@ const SLOT_TIMES = {
   "10:30 - 11:00": ["10:30", "11:00"]
 };
 
-export default function TabTiming({ startDate, endDate, onStatsReady }) {
+export default function TabTiming({ startDate, endDate, ordersByDate, timeByDate, onStatsReady }) {
   const [timingStats, setTimingStats] = useState(null);
   const [lastSentJSON, setLastSentJSON] = useState("");
 
   useEffect(() => {
-    if (!startDate || !endDate) return;
+    if (!startDate || !endDate || !ordersByDate || !timeByDate) return;
 
-    const rawOrders = localStorage.getItem("ordersByDate");
-    const rawTimes = localStorage.getItem("timeByDate");
-    if (!rawOrders || !rawTimes) return;
-
-    const ordersByDate = JSON.parse(rawOrders);
-    const timeByDate = JSON.parse(rawTimes);
     const stats = {};
-
     const start = dayjs(startDate).startOf("day");
     const end = dayjs(endDate).endOf("day");
 
@@ -44,19 +37,17 @@ export default function TabTiming({ startDate, endDate, onStatsReady }) {
 
       for (const room in orders) {
         const roomOrders = orders[room];
-        const slotLabel = times[room];
+        const slotLabel = times[room] || roomOrders[0]?.time;
         const slotRange = SLOT_TIMES[slotLabel];
 
-        if (!slotRange) {
-          continue;
-        }
+        if (!slotRange) continue;
 
         const [slotStart, slotEnd] = slotRange.map(t => dayjs(`${dateKey}T${t}`));
 
         for (const order of roomOrders) {
           if (!order.deliveredAt) continue;
 
-          const delivered = dayjs(order.deliveredAt, "HH:mm");
+          const delivered = dayjs(order.deliveredAt);
           if (!delivered.isValid()) continue;
 
           const inSlot = delivered.isSameOrAfter(slotStart) && delivered.isSameOrBefore(slotEnd);
@@ -66,11 +57,8 @@ export default function TabTiming({ startDate, endDate, onStatsReady }) {
           }
 
           stats[slotLabel].total++;
-          if (inSlot) {
-            stats[slotLabel].onTime++;
-          } else {
-            stats[slotLabel].late++;
-          }
+          if (inSlot) stats[slotLabel].onTime++;
+          else stats[slotLabel].late++;
         }
       }
     }
@@ -78,13 +66,12 @@ export default function TabTiming({ startDate, endDate, onStatsReady }) {
     const sorted = Object.entries(stats).sort(([, a], [, b]) => b.total - a.total);
     setTimingStats(sorted);
 
-    // 🚫 Избегаем зацикливания: только если новые данные
     const newJSON = JSON.stringify(sorted);
     if (onStatsReady && newJSON !== lastSentJSON) {
       onStatsReady(sorted);
       setLastSentJSON(newJSON);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, ordersByDate, timeByDate]);
 
   if (!startDate || !endDate) {
     return <p>📌 Нажмите «Составить отчёт», чтобы увидеть данные</p>;
@@ -98,22 +85,33 @@ export default function TabTiming({ startDate, endDate, onStatsReady }) {
     <table style={{ borderCollapse: "collapse", width: "100%" }}>
       <thead>
         <tr>
-          <th style={{ textAlign: "left", padding: "6px", borderBottom: "1px solid #ccc" }}>Слот</th>
-          <th style={{ textAlign: "left", padding: "6px", borderBottom: "1px solid #ccc" }}>Всего</th>
-          <th style={{ textAlign: "left", padding: "6px", borderBottom: "1px solid #ccc" }}>Вовремя</th>
-          <th style={{ textAlign: "left", padding: "6px", borderBottom: "1px solid #ccc" }}>С опозданием</th>
+          <th style={cellHead}>Слот</th>
+          <th style={cellHead}>Всего</th>
+          <th style={cellHead}>Вовремя</th>
+          <th style={cellHead}>С опозданием</th>
         </tr>
       </thead>
       <tbody>
         {timingStats.map(([slot, data]) => (
           <tr key={slot}>
-            <td style={{ padding: "6px", borderBottom: "1px solid #eee" }}>{slot}</td>
-            <td style={{ padding: "6px", borderBottom: "1px solid #eee" }}>{data.total}</td>
-            <td style={{ padding: "6px", borderBottom: "1px solid #eee" }}>{data.onTime}</td>
-            <td style={{ padding: "6px", borderBottom: "1px solid #eee" }}>{data.late}</td>
+            <td style={cellBody}>{slot}</td>
+            <td style={cellBody}>{data.total}</td>
+            <td style={cellBody}>{data.onTime}</td>
+            <td style={cellBody}>{data.late}</td>
           </tr>
         ))}
       </tbody>
     </table>
   );
 }
+
+const cellHead = {
+  textAlign: "left",
+  padding: "6px",
+  borderBottom: "1px solid #ccc"
+};
+
+const cellBody = {
+  padding: "6px",
+  borderBottom: "1px solid #eee"
+};
