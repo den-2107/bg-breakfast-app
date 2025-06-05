@@ -6,7 +6,7 @@ import { loadTimeSlotsByDate } from "./TimeSlotsService";
 export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrdersByDate }) {
   const [showAlert, setShowAlert] = useState(false);
   const [alertSlot, setAlertSlot] = useState(null);
-  const shownRoomsRef = useRef(new Set());
+  const shownCountsRef = useRef({});
 
   const dateKey = selectedDate.toLocaleDateString("sv-SE");
   const orders = ordersByDate?.[dateKey] || {};
@@ -32,10 +32,10 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem("shownTodayRooms") || "[]");
-      shownRoomsRef.current = new Set(saved);
+      const saved = JSON.parse(localStorage.getItem("shownTodayRoomCounts") || "{}");
+      shownCountsRef.current = saved;
     } catch {
-      shownRoomsRef.current = new Set();
+      shownCountsRef.current = {};
     }
   }, []);
 
@@ -43,73 +43,70 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
     if (selectedDate.toDateString() !== todayStr) return;
 
     for (const [room, orderList] of Object.entries(orders)) {
-      if (shownRoomsRef.current.has(room)) continue;
+      const notToGoOrders = orderList.filter(o => !isToGo(o.toGo) && new Date(o.created).toDateString() === todayStr);
+      if (notToGoOrders.length === 0) continue;
 
-      const hasTodayOrder = orderList?.some(order => {
-        const createdStr = order?.created;
-        const isToday = createdStr && new Date(createdStr).toDateString() === todayStr;
-        const notToGo = !isToGo(order?.toGo);
-        return isToday && notToGo;
-      });
-
-      if (hasTodayOrder) {
+      const shownCount = shownCountsRef.current?.[room] || 0;
+      if (notToGoOrders.length > shownCount) {
         const slot = times?.[room] || "Не выбрано";
         setAlertSlot(slot);
         setShowAlert(true);
-        shownRoomsRef.current.add(room);
-        localStorage.setItem("shownTodayRooms", JSON.stringify([...shownRoomsRef.current]));
+
+        shownCountsRef.current[room] = notToGoOrders.length;
+        localStorage.setItem("shownTodayRoomCounts", JSON.stringify(shownCountsRef.current));
         break;
       }
     }
   }, [selectedDate, orders, times]);
 
-  // ✅ Подписка на новые заказы с актуализацией слота и фильтром по ToGo
   useEffect(() => {
     if (selectedDate.toDateString() !== todayStr) return;
 
     const unsub = pb.collection("orders").subscribe("*", async (e) => {
-      if (e.action === "create") {
-        const newOrder = e.record;
-        const createdDate = new Date(newOrder.created).toDateString();
-        if (createdDate !== todayStr) return;
+      if (e.action !== "create") return;
 
-        const room = newOrder.room;
-        const toGo = newOrder.toGo;
+      const newOrder = e.record;
+      const createdDate = new Date(newOrder.created).toDateString();
+      if (createdDate !== todayStr || isToGo(newOrder.toGo)) return;
 
-        if (shownRoomsRef.current.has(room)) return;
-        if (toGo === true || toGo === "true" || toGo === "on" || toGo === 1 || toGo === "1") return;
+      const updated = await pb.collection("orders").getFullList({
+        filter: `date = "${selectedDate.toISOString().slice(0, 10)}"`,
+        sort: "+created"
+      });
 
-        const updated = await pb.collection("orders").getFullList({
-          filter: `date = "${selectedDate.toISOString().slice(0, 10)}"`,
-          sort: "+created"
-        });
+      const grouped = {};
+      for (const order of updated) {
+        if (!grouped[order.room]) grouped[order.room] = [];
+        grouped[order.room].push(order);
+      }
 
-        const grouped = {};
-        for (const order of updated) {
-          if (!grouped[order.room]) grouped[order.room] = [];
-          grouped[order.room].push(order);
+      setOrdersByDate(prev => ({
+        ...prev,
+        [dateKey]: grouped
+      }));
+
+      setTimeout(async () => {
+        let actualSlot = "Не выбрано";
+        const dateStr = selectedDate.toISOString().slice(0, 10);
+        const roomKey = newOrder.room.toLowerCase();
+
+        for (let i = 0; i < 3; i++) {
+          const freshSlots = await loadTimeSlotsByDate(dateStr);
+          actualSlot = freshSlots?.[roomKey] || "Не выбрано";
+          if (actualSlot !== "Не выбрано") break;
+          await new Promise((res) => setTimeout(res, 1000));
         }
 
-        setOrdersByDate(prev => ({
-          ...prev,
-          [dateKey]: grouped
-        }));
+        setAlertSlot(actualSlot);
+        setShowAlert(true);
 
-        setTimeout(async () => {
-          const freshSlots = await loadTimeSlotsByDate(selectedDate.toISOString().slice(0, 10));
-          const actualSlot = freshSlots?.[room] || "Не выбрано";
-          setAlertSlot(actualSlot);
-          setShowAlert(true);
-
-          shownRoomsRef.current.add(room);
-          localStorage.setItem("shownTodayRooms", JSON.stringify([...shownRoomsRef.current]));
-        }, 40000);
-      }
+        const countNow = grouped[newOrder.room]?.filter(o => !isToGo(o.toGo))?.length || 1;
+        shownCountsRef.current[newOrder.room] = countNow;
+        localStorage.setItem("shownTodayRoomCounts", JSON.stringify(shownCountsRef.current));
+      }, 40000);
     });
 
-    return () => {
-      pb.collection("orders").unsubscribe("*");
-    };
+    return () => pb.collection("orders").unsubscribe("*");
   }, [selectedDate, setOrdersByDate]);
 
   let totalRooms = 0;
