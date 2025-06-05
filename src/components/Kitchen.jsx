@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import KitchenCard from "./KitchenCard";
 import pb from "../pocketbase";
+import { loadTimeSlotsByDate } from "./TimeSlotsService";
 
 export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrdersByDate }) {
   const [showAlert, setShowAlert] = useState(false);
@@ -62,7 +63,7 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
     }
   }, [selectedDate, orders, times]);
 
-  // ✅ Подписка на новые заказы из PocketBase с задержкой 40 сек
+  // ✅ Подписка на новые заказы с актуализацией слота перед показом
   useEffect(() => {
     if (selectedDate.toDateString() !== todayStr) return;
 
@@ -75,6 +76,7 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
         const room = newOrder.room;
         if (shownRoomsRef.current.has(room)) return;
 
+        // Перезагружаем заказы
         const updated = await pb.collection("orders").getFullList({
           filter: `date = "${selectedDate.toISOString().slice(0, 10)}"`,
           sort: "+created"
@@ -91,22 +93,23 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
           [dateKey]: grouped
         }));
 
-        const slot = times?.[room] || "Не выбрано";
-        setAlertSlot(slot);
-
-        setTimeout(() => {
+        // ⏱ ждём 40 секунд → получаем слот заново
+        setTimeout(async () => {
+          const freshSlots = await loadTimeSlotsByDate(selectedDate.toISOString().slice(0, 10));
+          const actualSlot = freshSlots?.[room] || "Не выбрано";
+          setAlertSlot(actualSlot);
           setShowAlert(true);
-        }, 40000); // ⏳ задержка 40 секунд
 
-        shownRoomsRef.current.add(room);
-        localStorage.setItem("shownTodayRooms", JSON.stringify([...shownRoomsRef.current]));
+          shownRoomsRef.current.add(room);
+          localStorage.setItem("shownTodayRooms", JSON.stringify([...shownRoomsRef.current]));
+        }, 40000);
       }
     });
 
     return () => {
       pb.collection("orders").unsubscribe("*");
     };
-  }, [selectedDate, times, setOrdersByDate]);
+  }, [selectedDate, setOrdersByDate]);
 
   let totalRooms = 0;
   let totalOrders = 0;
