@@ -63,7 +63,7 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
     }
   }, [selectedDate, orders, times]);
 
-  // ✅ Подписка на новые заказы с актуализацией слота перед показом
+  // ✅ Подписка на новые заказы с актуализацией слота и фильтром по ToGo
   useEffect(() => {
     if (selectedDate.toDateString() !== todayStr) return;
 
@@ -74,9 +74,11 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
         if (createdDate !== todayStr) return;
 
         const room = newOrder.room;
-        if (shownRoomsRef.current.has(room)) return;
+        const toGo = newOrder.toGo;
 
-        // Перезагружаем заказы
+        if (shownRoomsRef.current.has(room)) return;
+        if (toGo === true || toGo === "true" || toGo === "on" || toGo === 1 || toGo === "1") return;
+
         const updated = await pb.collection("orders").getFullList({
           filter: `date = "${selectedDate.toISOString().slice(0, 10)}"`,
           sort: "+created"
@@ -93,7 +95,6 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
           [dateKey]: grouped
         }));
 
-        // ⏱ ждём 40 секунд → получаем слот заново
         setTimeout(async () => {
           const freshSlots = await loadTimeSlotsByDate(selectedDate.toISOString().slice(0, 10));
           const actualSlot = freshSlots?.[room] || "Не выбрано";
