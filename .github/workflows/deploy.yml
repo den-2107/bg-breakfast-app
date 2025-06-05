@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch: # ✅ ручной запуск по кнопке
+
+concurrency:         # ✅ отмена предыдущих запусков
+  group: "deploy-frontend"
+  cancel-in-progress: true
 
 jobs:
   deploy:
