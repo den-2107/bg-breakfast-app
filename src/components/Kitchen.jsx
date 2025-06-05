@@ -62,7 +62,7 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
     }
   }, [selectedDate, orders, times]);
 
-  // ✅ Подписка на новые заказы из PocketBase
+  // ✅ Подписка на новые заказы из PocketBase с задержкой 40 сек
   useEffect(() => {
     if (selectedDate.toDateString() !== todayStr) return;
 
@@ -75,7 +75,6 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
         const room = newOrder.room;
         if (shownRoomsRef.current.has(room)) return;
 
-        // Перезагружаем заказы
         const updated = await pb.collection("orders").getFullList({
           filter: `date = "${selectedDate.toISOString().slice(0, 10)}"`,
           sort: "+created"
@@ -94,7 +93,11 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
 
         const slot = times?.[room] || "Не выбрано";
         setAlertSlot(slot);
-        setShowAlert(true);
+
+        setTimeout(() => {
+          setShowAlert(true);
+        }, 40000); // ⏳ задержка 40 секунд
+
         shownRoomsRef.current.add(room);
         localStorage.setItem("shownTodayRooms", JSON.stringify([...shownRoomsRef.current]));
       }
@@ -144,7 +147,10 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
               Появился новый завтрак на слот {alertSlot || "Не выбрано"}
             </p>
             <button
-              onClick={() => setShowAlert(false)}
+              onClick={(e) => {
+                e.preventDefault?.();
+                setShowAlert(false);
+              }}
               style={{
                 fontSize: "14px",
                 padding: "4px 10px",
