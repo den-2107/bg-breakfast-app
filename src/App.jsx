@@ -51,7 +51,6 @@ export default function App() {
   const [showMenuEditor, setShowMenuEditor] = useState(false);
   const isSavingRef = useRef(false);
 
-  // ✅ Загружаем заказы и все тайм-слоты на дату (без фильтра по заказам)
   useEffect(() => {
     const fetchData = async () => {
       try {

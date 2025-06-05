@@ -1,10 +1,8 @@
 import pb from "../pocketbase";
 
-// ✅ Сохраняем новый заказ в PocketBase
 export async function saveOrder(order) {
   const prepared = normalizeOrder(order);
 
-  // 👉 добавляем created вручную
   prepared.created = new Date().toISOString();
 
   console.log("📦 saveOrder →", prepared);
@@ -13,7 +11,6 @@ export async function saveOrder(order) {
   return record;
 }
 
-// ✅ Обновляем заказ по ID
 export async function updateOrder(id, order) {
   const prepared = normalizeOrder(order);
   console.log("✏️ updateOrder →", id, prepared);
@@ -22,12 +19,10 @@ export async function updateOrder(id, order) {
   return record;
 }
 
-// ✅ Удаляем заказ по ID
 export async function deleteOrder(id) {
   return await pb.collection("orders").delete(id);
 }
 
-// ✅ Загружаем все заказы на конкретную дату (формат: "YYYY-MM-DD")
 export async function loadOrdersByDate(dateStr) {
   const from = `${dateStr} 00:00:00`;
   const to = `${dateStr} 23:59:59`;
@@ -35,7 +30,7 @@ export async function loadOrdersByDate(dateStr) {
   const result = await pb.collection("orders").getFullList({
     filter: `date >= "${from}" && date <= "${to}"`,
     sort: "room,time",
-    requestKey: null // ❗ не кэшировать результат
+    requestKey: null
   });
 
   const grouped = {};
@@ -43,7 +38,6 @@ export async function loadOrdersByDate(dateStr) {
     const room = order.room;
     if (!grouped[room]) grouped[room] = [];
 
-    // ✅ Прокидываем created → createdAt, чтобы использовать в Kitchen
     grouped[room].push({
       ...order,
       createdAt: order.created
@@ -53,7 +47,6 @@ export async function loadOrdersByDate(dateStr) {
   return grouped;
 }
 
-// ✅ Приводим заказ к нужному формату перед сохранением
 function normalizeOrder(order) {
   const extract = (val) => {
     if (!val) return "";

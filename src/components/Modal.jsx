@@ -4,7 +4,6 @@ import DishSelector from "./DishSelector";
 export default function Modal({ room, data, setData, onClose, onSave, selectedDate, timeByDate, ordersByDate }) {
   const [selectingDish, setSelectingDish] = useState(null);
 
-  // ✅ Автоматически ставим срочность, если в комнате уже есть срочный заказ
   useEffect(() => {
     if (!("urgent" in data)) {
       const dateKey = selectedDate.toLocaleDateString("sv-SE");
@@ -16,7 +15,6 @@ export default function Modal({ room, data, setData, onClose, onSave, selectedDa
     }
   }, []);
 
-  // ✅ При первом открытии — подставляем time и toGo, если это новый заказ
   useEffect(() => {
     if (!("time" in data)) {
       const dateKey = selectedDate.toLocaleDateString("sv-SE");
