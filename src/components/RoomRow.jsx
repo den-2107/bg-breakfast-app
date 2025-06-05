@@ -12,7 +12,8 @@ const TIME_SLOTS = [
   "09:30 - 10:00",
   "10:00 - 10:30",
   "10:30 - 11:00",
-  "To Go"
+  "To Go",
+  "Слот"
 ];
 
 export default function RoomRow({
