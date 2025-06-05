@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import KitchenCard from "./KitchenCard";
+import pb from "../pocketbase";
 
 export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrdersByDate }) {
   const [showAlert, setShowAlert] = useState(false);
@@ -43,27 +44,15 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
     for (const [room, orderList] of Object.entries(orders)) {
       if (shownRoomsRef.current.has(room)) continue;
 
-      console.log(`🔍 Комната: ${room}`);
-
       const hasTodayOrder = orderList?.some(order => {
         const createdStr = order?.created;
         const isToday = createdStr && new Date(createdStr).toDateString() === todayStr;
         const notToGo = !isToGo(order?.toGo);
-
-        console.log("   🧾 Заказ:", {
-          created: createdStr,
-          isToday,
-          toGo: order?.toGo,
-          notToGo,
-          finalCheck: isToday && notToGo
-        });
-
         return isToday && notToGo;
       });
 
       if (hasTodayOrder) {
         const slot = times?.[room] || "Не выбрано";
-        console.log(`✅ Показать модалку: Комната ${room}, слот ${slot}`);
         setAlertSlot(slot);
         setShowAlert(true);
         shownRoomsRef.current.add(room);
@@ -72,6 +61,49 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
       }
     }
   }, [selectedDate, orders, times]);
+
+  // ✅ Подписка на новые заказы из PocketBase
+  useEffect(() => {
+    if (selectedDate.toDateString() !== todayStr) return;
+
+    const unsub = pb.collection("orders").subscribe("*", async (e) => {
+      if (e.action === "create") {
+        const newOrder = e.record;
+        const createdDate = new Date(newOrder.created).toDateString();
+        if (createdDate !== todayStr) return;
+
+        const room = newOrder.room;
+        if (shownRoomsRef.current.has(room)) return;
+
+        // Перезагружаем заказы
+        const updated = await pb.collection("orders").getFullList({
+          filter: `date = "${selectedDate.toISOString().slice(0, 10)}"`,
+          sort: "+created"
+        });
+
+        const grouped = {};
+        for (const order of updated) {
+          if (!grouped[order.room]) grouped[order.room] = [];
+          grouped[order.room].push(order);
+        }
+
+        setOrdersByDate(prev => ({
+          ...prev,
+          [dateKey]: grouped
+        }));
+
+        const slot = times?.[room] || "Не выбрано";
+        setAlertSlot(slot);
+        setShowAlert(true);
+        shownRoomsRef.current.add(room);
+        localStorage.setItem("shownTodayRooms", JSON.stringify([...shownRoomsRef.current]));
+      }
+    });
+
+    return () => {
+      pb.collection("orders").unsubscribe("*");
+    };
+  }, [selectedDate, times, setOrdersByDate]);
 
   let totalRooms = 0;
   let totalOrders = 0;
