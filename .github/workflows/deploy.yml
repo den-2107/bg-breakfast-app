@@ -26,7 +26,9 @@ jobs:
           echo "== 🔧 Start build =="
           npm run build
           echo "== ✅ Build finished =="
-          ls -la
+
+      - name: Проверка содержимого build
+        run: ls -R build
 
       - name: Deploy via SCP
         uses: appleboy/scp-action@v0.1.3

@@ -4,7 +4,7 @@ import { deleteOrder, updateOrder } from "./OrdersService";
 import { saveTimeSlot, deleteTimeSlot } from "./TimeSlotsService";
 
 const TIME_SLOTS = [
-  "Не выбрано.",
+  "Не выбрано",
   "07:30 - 08:00",
   "08:00 - 08:30",
   "08:30 - 09:00",
