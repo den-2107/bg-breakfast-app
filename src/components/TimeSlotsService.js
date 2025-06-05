@@ -18,8 +18,11 @@ export async function loadTimeSlotsByDate(dateStr) {
 
   const grouped = {};
   for (const slot of result) {
-    if (!grouped[slot.date]) grouped[slot.date] = {};
-    grouped[slot.date][slot.room] = slot.time;
+    const normRoom = (slot.room || "").trim().toLowerCase();
+    const dateKey = new Date(slot.date).toISOString().slice(0, 10);
+
+    if (!grouped[dateKey]) grouped[dateKey] = {};
+    grouped[dateKey][normRoom] = slot.time;
   }
 
   return grouped[dateStr] || {};
