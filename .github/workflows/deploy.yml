@@ -26,9 +26,7 @@ jobs:
           echo "== 🔧 Start build =="
           npm run build
           echo "== ✅ Build finished =="
-
-      - name: Проверка содержимого build
-        run: ls -R build
+          ls -R build
 
       - name: Deploy via SCP
         uses: appleboy/scp-action@v0.1.3
@@ -36,5 +34,5 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "build"
+          source: "build/"
           target: "/var/www/bilibin"
