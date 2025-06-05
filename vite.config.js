@@ -4,7 +4,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: 'build', // важно для GitHub Actions: билд будет идти в /build
-    emptyOutDir: true // очищает старые файлы перед сборкой
+    outDir: 'build',        
+    emptyOutDir: true        
+  },
+  server: {
+    host: true              
   }
 })
