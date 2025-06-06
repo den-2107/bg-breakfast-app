@@ -6,7 +6,6 @@ import { loadTimeSlotsByDate } from "./TimeSlotsService";
 export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrdersByDate }) {
   const [showAlert, setShowAlert] = useState(false);
   const [alertSlot, setAlertSlot] = useState(null);
-  const shownCountsRef = useRef({});
 
   const dateKey = selectedDate.toLocaleDateString("sv-SE");
   const orders = ordersByDate?.[dateKey] || {};
@@ -29,35 +28,6 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
   };
 
   const todayStr = new Date().toDateString();
-
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("shownTodayRoomCounts") || "{}");
-      shownCountsRef.current = saved;
-    } catch {
-      shownCountsRef.current = {};
-    }
-  }, []);
-
-  useEffect(() => {
-    if (selectedDate.toDateString() !== todayStr) return;
-
-    for (const [room, orderList] of Object.entries(orders)) {
-      const notToGoOrders = orderList.filter(o => !isToGo(o.toGo) && new Date(o.created).toDateString() === todayStr);
-      if (notToGoOrders.length === 0) continue;
-
-      const shownCount = shownCountsRef.current?.[room] || 0;
-      if (notToGoOrders.length > shownCount) {
-        const slot = times?.[room] || "Не выбрано";
-        setAlertSlot(slot);
-        setShowAlert(true);
-
-        shownCountsRef.current[room] = notToGoOrders.length;
-        localStorage.setItem("shownTodayRoomCounts", JSON.stringify(shownCountsRef.current));
-        break;
-      }
-    }
-  }, [selectedDate, orders, times]);
 
   useEffect(() => {
     if (selectedDate.toDateString() !== todayStr) return;
@@ -99,10 +69,6 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
 
         setAlertSlot(actualSlot);
         setShowAlert(true);
-
-        const countNow = grouped[newOrder.room]?.filter(o => !isToGo(o.toGo))?.length || 1;
-        shownCountsRef.current[newOrder.room] = countNow;
-        localStorage.setItem("shownTodayRoomCounts", JSON.stringify(shownCountsRef.current));
       }, 40000);
     });
 

@@ -57,13 +57,23 @@ export default function Header({
     cursor: "default"
   };
 
+  const stickyStyle = {
+    position: "sticky",
+    top: 0,
+    backgroundColor: "#f9f9f9",
+    zIndex: 1000,
+    padding: "12px 20px",
+    borderBottom: "1px solid #ddd",
+    marginBottom: "20px"
+  };
+
   return (
     <div
       style={{
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 20
+        ...stickyStyle
       }}
     >
       <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
