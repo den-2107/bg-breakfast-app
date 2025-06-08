@@ -50,10 +50,12 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
         grouped[order.room].push(order);
       }
 
-      setOrdersByDate(prev => ({
-        ...prev,
-        [dateKey]: grouped
-      }));
+      // ✅ Вот здесь исправление: сохраняем все даты, не затираем остальные!
+      setOrdersByDate(prev => {
+        const updatedMap = { ...prev };
+        updatedMap[dateKey] = grouped;
+        return updatedMap;
+      });
 
       setTimeout(async () => {
         let actualSlot = "Не выбрано";
