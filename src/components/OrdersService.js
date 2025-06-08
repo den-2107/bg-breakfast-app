@@ -24,8 +24,11 @@ export async function deleteOrder(id) {
 }
 
 export async function loadOrdersByDate(dateStr) {
+  const from = `${dateStr} 00:00:00`;
+  const to = `${dateStr} 23:59:59`;
+
   const result = await pb.collection("orders").getFullList({
-    filter: `date = "${dateStr}"`, // 👈 Фикс: точное совпадение по дате
+    filter: `date >= "${from}" && date <= "${to}"`,
     sort: "room,time",
     requestKey: null
   });
