@@ -1,13 +1,15 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import KitchenCard from "./KitchenCard";
 import pb from "../pocketbase";
-import { loadTimeSlotsByDate } from "./TimeSlotsService";
+import { loadTimeSlotsByDate, loadTimeSlotsRaw } from "./TimeSlotsService";
+import { loadOrdersByDate } from "./OrdersService";
 
-export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrdersByDate }) {
+export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrdersByDate, setTimeByDate }) {
   const [showAlert, setShowAlert] = useState(false);
   const [alertSlot, setAlertSlot] = useState(null);
 
-  const dateKey = selectedDate.toLocaleDateString("sv-SE");
+const dateKey = selectedDate.toISOString().slice(0, 10);
+
   const orders = ordersByDate?.[dateKey] || {};
   const times = timeByDate?.[dateKey] || {};
 
@@ -27,61 +29,113 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
     return v === true || v === "true" || v === "on" || v === "1" || v === 1;
   };
 
-  const todayStr = new Date().toDateString();
+  const today = new Date();
+  const todayStr = today.toDateString();
+  const dateStr = selectedDate.toISOString().slice(0, 10);
 
-  useEffect(() => {
-    if (selectedDate.toDateString() !== todayStr) return;
+  const fetchData = async () => {
+    try {
+      const freshOrdersRaw = await loadOrdersByDate(dateStr);
 
-    const unsub = pb.collection("orders").subscribe("*", async (e) => {
-      if (e.action !== "create") return;
-
-      const newOrder = e.record;
-      const createdDate = new Date(newOrder.created).toDateString();
-      if (createdDate !== todayStr || isToGo(newOrder.toGo)) return;
-
-      const updated = await pb.collection("orders").getFullList({
-        filter: `date = "${selectedDate.toISOString().slice(0, 10)}"`,
-        sort: "+created"
-      });
-
-      const grouped = {};
-      for (const order of updated) {
-        if (!grouped[order.room]) grouped[order.room] = [];
-        grouped[order.room].push(order);
+      // Строго фильтруем заказы по дате
+      const freshOrders = {};
+      for (const room in freshOrdersRaw) {
+        const filtered = freshOrdersRaw[room].filter(
+          (order) => order.date?.slice(0, 10) === dateStr
+        );
+        if (filtered.length > 0) {
+          freshOrders[room] = filtered;
+        }
       }
 
-      // ✅ Вот здесь исправление: сохраняем все даты, не затираем остальные!
-      setOrdersByDate(prev => {
-        const updatedMap = { ...prev };
-        updatedMap[dateKey] = grouped;
-        return updatedMap;
+      const freshSlotsArray = await loadTimeSlotsRaw(dateStr);
+      const groupedSlots = {};
+      freshSlotsArray.forEach((slot) => {
+        groupedSlots[slot.room] = slot.time;
       });
 
-      setTimeout(async () => {
-        let actualSlot = "Не выбрано";
-        const dateStr = selectedDate.toISOString().slice(0, 10);
-        const roomKey = newOrder.room.toLowerCase();
+      setOrdersByDate((prev) => ({ ...prev, [dateKey]: freshOrders }));
+      setTimeByDate((prev) => ({ ...prev, [dateKey]: groupedSlots }));
+    } catch (error) {
+      console.error("Ошибка при автозагрузке данных:", error);
+    }
+  };
 
-        for (let i = 0; i < 3; i++) {
-          const freshSlots = await loadTimeSlotsByDate(dateStr);
-          actualSlot = freshSlots?.[roomKey] || "Не выбрано";
-          if (actualSlot !== "Не выбрано") break;
-          await new Promise((res) => setTimeout(res, 1000));
+  useEffect(() => {
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    const unsub = pb.collection("orders").subscribe("*", async (e) => {
+      const roomKey = e.record.room.toLowerCase();
+      const orderDateStr = e.record.date?.slice(0, 10);
+      if (orderDateStr !== dateStr || isToGo(e.record.toGo)) return;
+
+      if (e.action === "create") {
+        setOrdersByDate((prev) => {
+          const updated = { ...prev };
+          const roomOrders = updated[dateKey]?.[e.record.room] || [];
+          const updatedDate = {
+            ...updated[dateKey],
+            [e.record.room]: [...roomOrders, e.record],
+          };
+          return { ...updated, [dateKey]: updatedDate };
+        });
+
+        const createdDate = new Date(e.record.created).toDateString();
+        if (createdDate === todayStr && orderDateStr === dateStr) {
+          setTimeout(async () => {
+            let actualSlot = "Не выбрано";
+            for (let i = 0; i < 5; i++) {
+              const freshSlots = await loadTimeSlotsByDate(dateStr);
+              actualSlot = freshSlots?.[roomKey] || "Не выбрано";
+              if (actualSlot !== "Не выбрано" && actualSlot.toLowerCase() !== "to go") break;
+              await new Promise((res) => setTimeout(res, 1000));
+            }
+
+            if (actualSlot.toLowerCase() !== "to go") {
+              setAlertSlot(actualSlot);
+              setShowAlert(true);
+            }
+          }, 2000);
         }
+      }
 
-        setAlertSlot(actualSlot);
-        setShowAlert(true);
-      }, 40000);
+      if (e.action === "update") {
+        setOrdersByDate((prev) => {
+          const updated = { ...prev };
+          const current = updated[dateKey]?.[e.record.room] || [];
+          const updatedRoomOrders = current.map((o) => o.id === e.record.id ? e.record : o);
+          return {
+            ...updated,
+            [dateKey]: {
+              ...updated[dateKey],
+              [e.record.room]: updatedRoomOrders,
+            },
+          };
+        });
+      }
+
+      if (e.action === "delete") {
+        setOrdersByDate((prev) => {
+          const updated = { ...prev };
+          const current = updated[dateKey]?.[e.record.room] || [];
+          const filtered = current.filter((o) => o.id !== e.record.id);
+          const updatedDate = { ...updated[dateKey], [e.record.room]: filtered };
+          return { ...updated, [dateKey]: updatedDate };
+        });
+      }
     });
 
     return () => pb.collection("orders").unsubscribe("*");
-  }, [selectedDate, setOrdersByDate]);
+  }, [selectedDate]);
 
   let totalRooms = 0;
   let totalOrders = 0;
 
   for (const [room, orderList] of Object.entries(orders)) {
-    const filteredOrders = orderList.filter(order => !isToGo(order?.toGo));
+    const filteredOrders = orderList.filter((order) => !isToGo(order?.toGo));
     if (filteredOrders.length === 0) continue;
 
     totalRooms++;
@@ -118,7 +172,9 @@ export default function Kitchen({ selectedDate, ordersByDate, timeByDate, setOrd
             <button
               onClick={(e) => {
                 e.preventDefault?.();
-                setShowAlert(false);
+                localStorage.setItem("selectedTab", "kitchen");
+                localStorage.setItem("selectedDate", selectedDate.toISOString());
+                window.location.reload();
               }}
               style={{
                 fontSize: "14px",

@@ -12,9 +12,7 @@ import {
   saveOrder,
   updateOrder,
 } from "./components/OrdersService";
-import {
-  loadTimeSlotsRaw
-} from "./components/TimeSlotsService";
+import { loadTimeSlotsRaw } from "./components/TimeSlotsService";
 
 const ROOMS = [
   "A2", "A4",
@@ -62,12 +60,13 @@ export default function App() {
           groupedSlots[slot.room] = slot.time;
         });
 
-        setOrdersByDate({ [dateKey]: orders });
-        setTimeByDate({ [dateKey]: groupedSlots });
+        // 💥 Полностью заменяем только на выбранную дату
+        setOrdersByDate((prev) => ({ [dateKey]: orders }));
+        setTimeByDate((prev) => ({ [dateKey]: groupedSlots }));
       } catch (error) {
         console.error("Ошибка загрузки заказов или слотов:", error);
-        setOrdersByDate({ [dateKey]: {} });
-        setTimeByDate({ [dateKey]: {} });
+        setOrdersByDate((prev) => ({ [dateKey]: {} }));
+        setTimeByDate((prev) => ({ [dateKey]: {} }));
       }
     };
 
@@ -123,9 +122,9 @@ export default function App() {
         savedOrder = await saveOrder(newOrder);
       }
 
+      // ⚡ Обновляем только текущую дату
       setOrdersByDate((prev) => {
-        const updated = { ...prev };
-        const byRoom = { ...(updated[dateKey] || {}) };
+        const byRoom = { ...(prev[dateKey] || {}) };
         const roomOrders = [...(byRoom[modalRoom] || [])];
 
         if (modalData.id) {
@@ -135,9 +134,12 @@ export default function App() {
           roomOrders.push(savedOrder);
         }
 
-        byRoom[modalRoom] = roomOrders;
-        updated[dateKey] = byRoom;
-        return updated;
+        return {
+          [dateKey]: {
+            ...byRoom,
+            [modalRoom]: roomOrders
+          }
+        };
       });
 
       setModalRoom(null);
@@ -184,6 +186,7 @@ export default function App() {
             ordersByDate={ordersByDate}
             timeByDate={timeByDate}
             setOrdersByDate={setOrdersByDate}
+            setTimeByDate={setTimeByDate}
           />
         )}
 

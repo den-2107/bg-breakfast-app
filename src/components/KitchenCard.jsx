@@ -208,6 +208,7 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
       <div style={{ marginTop: "12px" }}>
         <button
           onClick={handleDelivered}
+          disabled={status === "done"}
           style={{
             width: "100%",
             padding: "8px 0",
@@ -215,8 +216,9 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
             color: status === "done" ? "white" : "#000",
             border: "1px solid #aaa",
             borderRadius: "6px",
-            cursor: "pointer",
-            fontWeight: "bold"
+            cursor: status === "done" ? "not-allowed" : "pointer",
+            fontWeight: "bold",
+            opacity: status === "done" ? 0.6 : 1
           }}
         >
           Доставлено
