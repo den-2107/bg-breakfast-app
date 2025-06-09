@@ -12,6 +12,15 @@ export default function OrderCard({ order, index }) {
     }
   };
 
+  // Обработка массива extras: может быть строкой или объектом
+  const formatExtras = (extras) => {
+    if (!extras || extras.length === 0) return <span style={{ color: '#bbb' }}>не выбрано</span>;
+    return extras
+      .map((e) => (typeof e === "object" ? e.name || e.id || "" : e))
+      .filter(Boolean)
+      .join(", ");
+  };
+
   return (
     <div style={{
       border: "1px solid #ddd",
@@ -29,6 +38,7 @@ export default function OrderCard({ order, index }) {
       flexDirection: "column",
       position: "relative"
     }}>
+      {/* Статус */}
       <div style={{
         position: "absolute",
         top: "10px",
@@ -52,11 +62,7 @@ export default function OrderCard({ order, index }) {
         <div><strong>Блюдо 1:</strong> {order.dish1 || <span style={{ color: '#bbb' }}>не выбрано</span>}</div>
         <div><strong>Блюдо 2:</strong> {order.dish2 || <span style={{ color: '#bbb' }}>не выбрано</span>}</div>
         <div><strong>Напиток:</strong> {order.drinks || <span style={{ color: '#bbb' }}>не выбрано</span>}</div>
-        <div><strong>Допы:</strong>{" "}
-          {order.extras?.length > 0
-            ? order.extras.join(", ")
-            : <span style={{ color: '#bbb' }}>не выбрано</span>}
-        </div>
+        <div><strong>Допы:</strong> {formatExtras(order.extras)}</div>
       </div>
 
       <div style={{

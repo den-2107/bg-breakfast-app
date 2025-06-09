@@ -83,8 +83,9 @@ const dateKey = selectedDate.toISOString().slice(0, 10);
           return { ...updated, [dateKey]: updatedDate };
         });
 
-        const createdDate = new Date(e.record.created).toDateString();
-        if (createdDate === todayStr && orderDateStr === dateStr) {
+const createdDate = new Date(e.record.created).toISOString().slice(0, 10);
+const todayISO = new Date().toISOString().slice(0, 10);
+if (createdDate === todayISO && orderDateStr === todayISO) {
           setTimeout(async () => {
             let actualSlot = "Не выбрано";
             for (let i = 0; i < 5; i++) {

@@ -13,6 +13,7 @@ import {
   updateOrder,
 } from "./components/OrdersService";
 import { loadTimeSlotsRaw } from "./components/TimeSlotsService";
+import pb from "./pocketbase"; // 👈 добавлено
 
 const ROOMS = [
   "A2", "A4",
@@ -49,6 +50,39 @@ export default function App() {
   const [showMenuEditor, setShowMenuEditor] = useState(false);
   const isSavingRef = useRef(false);
 
+  // 📡 Подписка на обновление статуса
+  useEffect(() => {
+    const unsubscribe = pb.collection("orders").subscribe("*", async (e) => {
+      if (e.action === "update") {
+        const updatedOrder = e.record;
+        const orderDate = new Date(updatedOrder.date).toLocaleDateString("sv-SE");
+
+        if (orderDate !== dateKey) return;
+
+        setOrdersByDate((prev) => {
+          const newData = { ...prev };
+          const byRoom = { ...(newData[dateKey] || {}) };
+          const room = updatedOrder.room;
+          const roomOrders = [...(byRoom[room] || [])];
+
+          const index = roomOrders.findIndex((o) => o.id === updatedOrder.id);
+          if (index !== -1) {
+            roomOrders[index] = updatedOrder;
+          }
+
+          newData[dateKey] = {
+            ...byRoom,
+            [room]: roomOrders
+          };
+
+          return newData;
+        });
+      }
+    });
+
+    return () => pb.collection("orders").unsubscribe("*");
+  }, [dateKey]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -60,7 +94,6 @@ export default function App() {
           groupedSlots[slot.room] = slot.time;
         });
 
-        // 💥 Полностью заменяем только на выбранную дату
         setOrdersByDate((prev) => ({ [dateKey]: orders }));
         setTimeByDate((prev) => ({ [dateKey]: groupedSlots }));
       } catch (error) {
@@ -122,7 +155,6 @@ export default function App() {
         savedOrder = await saveOrder(newOrder);
       }
 
-      // ⚡ Обновляем только текущую дату
       setOrdersByDate((prev) => {
         const byRoom = { ...(prev[dateKey] || {}) };
         const roomOrders = [...(byRoom[modalRoom] || [])];

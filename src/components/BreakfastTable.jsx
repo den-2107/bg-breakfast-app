@@ -1,6 +1,7 @@
 // ===== BreakfastTable.jsx =====
-import React from "react";
+import React, { useEffect } from "react";
 import RoomRow from "./RoomRow";
+import pb from "../pocketbase"; // ✅ подключаем PocketBase
 
 export default function BreakfastTable({
   rooms,
@@ -27,6 +28,34 @@ export default function BreakfastTable({
   console.log("orders", orders);
   console.log("selectedDate", selectedDate);
 
+  useEffect(() => {
+    const dateStr = selectedDate.toISOString().slice(0, 10);
+
+    const unsub = pb.collection("orders").subscribe("*", (e) => {
+      if (e.action !== "update") return;
+
+      const orderDate = e.record.date?.slice(0, 10);
+      if (orderDate !== dateStr) return;
+
+      setOrdersByDate(prev => {
+        const updated = { ...prev };
+        const room = e.record.room;
+        const current = updated[room] || [];
+
+        const updatedRoom = current.map(order =>
+          order.id === e.record.id ? { ...order, ...e.record } : order
+        );
+
+        return {
+          ...updated,
+          [room]: updatedRoom
+        };
+      });
+    });
+
+    return () => pb.collection("orders").unsubscribe("*");
+  }, [selectedDate]);
+
   return (
     <div>
       <div
@@ -35,7 +64,7 @@ export default function BreakfastTable({
           fontWeight: "bold",
           fontSize: "18px",
           paddingLeft: "0px",
-          textAlign: "left" // 👈 выравнивание по левому краю
+          textAlign: "left"
         }}
       >
         Завтраки: {roomsWithOrders.length} номеров / {totalOrders} заказов
@@ -59,7 +88,7 @@ export default function BreakfastTable({
                 borderBottom: "2px solid #ccc",
                 padding: "8px",
                 fontSize: "16px",
-                textAlign: "left" 
+                textAlign: "left"
               }}
             >
               Время
@@ -69,7 +98,7 @@ export default function BreakfastTable({
                 borderBottom: "2px solid #ccc",
                 padding: "8px",
                 fontSize: "16px",
-                textAlign: "left" // 👈 левый край
+                textAlign: "left"
               }}
             >
               Завтрак
