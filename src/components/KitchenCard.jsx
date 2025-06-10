@@ -221,8 +221,9 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
             opacity: status === "done" ? 0.6 : 1
           }}
         >
-          Доставлено
+          {status === "done" ? "Доставлено" : "В доставку"}
         </button>
+
         {status === "done" && orders[0]?.deliveredAt && (
           <div style={{ marginTop: "6px", textAlign: "center", color: "#555", fontSize: "14px" }}>
             Доставлено в {dayjs(orders[0].deliveredAt).format("HH:mm")}
