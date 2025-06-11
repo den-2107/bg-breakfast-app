@@ -198,7 +198,7 @@ export default function KitchenCard({ room, orders, isPriority, selectedDate, se
                 wordBreak: "break-word",
                 whiteSpace: "pre-wrap"
               }}>
-                <strong>Комментарий:</strong> {comment || "—"}
+                <span>Комментарий:</span> <strong>{comment || "—"}</strong>
               </div>
             </div>
           </React.Fragment>
