@@ -49,6 +49,7 @@ export default function Reports() {
     }
 
     let totalOrders = 0;
+    let cancelledCount = 0;
     const roomsSet = new Set();
     let toGoCount = 0;
     const dishMap = {};
@@ -72,6 +73,7 @@ export default function Reports() {
         for (const order of roomOrders) {
           totalOrders++;
           if (order.toGo) toGoCount++;
+          if (order.status === "cancelled") cancelledCount++;
 
           const allDishes = [order.dish1, order.dish2, order.drinks, ...(order.extras || [])];
           for (const item of allDishes) {
@@ -103,7 +105,12 @@ export default function Reports() {
 
     if (activeTab === "summary" || activeTab === "dishes" || activeTab === "slots") {
       if (activeTab === "summary") {
-        setReportData({ totalOrders, uniqueRooms: roomsSet.size, toGoCount });
+        setReportData({
+          totalOrders,
+          uniqueRooms: roomsSet.size,
+          toGoCount,
+          cancelledCount
+        });
       }
       if (activeTab === "summary" || activeTab === "dishes") {
         setDishesStats(Object.entries(dishMap).sort((a, b) => b[1] - a[1]));
@@ -151,7 +158,8 @@ export default function Reports() {
       addSheet([
         { Показатель: "Всего заказов", Значение: reportData.totalOrders },
         { Показатель: "Количество номеров", Значение: reportData.uniqueRooms },
-        { Показатель: "To Go", Значение: reportData.toGoCount }
+        { Показатель: "To Go", Значение: reportData.toGoCount },
+        { Показатель: "Отказы", Значение: reportData.cancelledCount }
       ], "Общая статистика");
 
       addSheet(dishesStats.map(([name, count]) => ({ Позиция: name, Количество: count })), "По блюдам");
@@ -169,6 +177,7 @@ export default function Reports() {
       fullData.push(["Всего заказов", reportData.totalOrders]);
       fullData.push(["Количество номеров", reportData.uniqueRooms]);
       fullData.push(["To Go", reportData.toGoCount]);
+      fullData.push(["Отказы", reportData.cancelledCount]);
 
       fullData.push([]);
       fullData.push(["Популярные блюда и напитки"]);

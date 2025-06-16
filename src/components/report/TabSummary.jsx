@@ -10,6 +10,7 @@ export default function TabSummary({ reportData }) {
       <li><strong>Количество заказов:</strong> {reportData.totalOrders}</li>
       <li><strong>Количество номеров:</strong> {reportData.uniqueRooms}</li>
       <li><strong>Завтраков To Go:</strong> {reportData.toGoCount}</li>
+      <li><strong>Отказы:</strong> {reportData.cancelledCount}</li>
     </ul>
   );
 }
